@@ -1,0 +1,3 @@
+[submodule "aiovelib"]
+	path = aiovelib
+	url = https://github.com/victronenergy/aiovelib.git

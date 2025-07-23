@@ -1,3 +1,7 @@
+*.swp
+tags
+tmp
+
 # Prerequisites
 *.d
 
