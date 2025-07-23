@@ -46,7 +46,7 @@ class Simulation:
         self.startload = steps/3
         self.endload = steps*2/3
 
-        print(f"interval: {self.interval} seconds, {self.interval/3600} h")
+        logger.debug(f"interval: {self.interval} seconds, {self.interval/3600} h")
         self.step = 0
 
         for plot in axs:
@@ -63,18 +63,16 @@ class Simulation:
         _yield = 0
         while self.step < self.steps+1:
 
-            print(f"simul loop {self.step}/{self.steps}")
+            logger.debug(f"simul loop {self.step}/{self.steps}")
 
             pvpower = self.installed_pv * math.sin(self.step/self.steps * math.pi)
             _yield += pvpower * (self.interval/3600) / 1000
-            print("pv, yield", pvpower, _yield);
 
             dccurrent = 0.033
             if (self.step >= self.startload) and (self.step <= self.endload):
                 srange = self.endload - self.startload
                 y = max(0.01, self.step - self.startload)
                 dccurrent = ((self.installed_pv*1.25) * math.sin(y/srange * math.pi)) / 50 
-            print("dccurrent", dccurrent);
 
             pvplot.plot(self.step, pvpower, marker=".", color="green")
             loadplot.plot(self.step, dccurrent, marker=".", color="red")
@@ -87,20 +85,20 @@ class Simulation:
             for service in self.services:
                 with service as s:
                     rand = (random.random()/25) + (1-1/50)
-                    # print("simul loop, step, random:", self.step, rand);
+                    # logger.debug("simul loop, step, random:", self.step, rand);
                     s['/Yield/User'] = _yield * rand
 
             for service in self.inverter_services:
                 with service as s:
                     rand = (random.random()/25) + (1-1/50)
-                    # print("simul loop, step, random:", self.step, rand);
+                    # logger.debug("simul loop, step, random:", self.step, rand);
                     s['/Dc/0/Current'] = dccurrent * rand
 
             await asyncio.sleep(self.delay)
 
             if self.step == self.steps and self.twait == -1:
                 # repeat
-                print("loop done, restarting ")
+                logger.debug("loop done, restarting ")
                 self.step = 0
                 _yield = 0
             else:
@@ -108,7 +106,7 @@ class Simulation:
 
 
         if self.twait > 0:
-            print("loop done, waiting ", self.twait);
+            logger.debug("loop done, waiting {self.twait}");
             await asyncio.sleep(self.twait)
             # for s in self.services:
                 # s.done()
@@ -159,7 +157,7 @@ async def amain(bus_type, args):
                        [chgsrv, multisrv],
                        [rs6srv, mp2srv],
                        int(args.twait))
-    print("await loop")
+    logger.debug("await loop")
     await loop.create_task(simul.loop())
 
 def main():

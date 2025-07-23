@@ -152,13 +152,13 @@ class IbrSystemService(AioDbusService):
 
     def publishPVYield(self, pvyield):
         earn = pvyield * self.gridEnergyPrice
-        print(f"publish yield: {pvyield}, earn: {earn}")
+        logger.debug(f"publish yield: {pvyield}, earn: {earn}")
         with self as s:
             s['/TotalPVYield'] = pvyield
             s['/TotalPVEarnings'] = earn
 
     def publishBattLoad(self, load):
-        print(f"publish load: {load}")
+        logger.debug(f"publish load: {load}")
         with self as s:
             s['/BattLoad'] = load
 
