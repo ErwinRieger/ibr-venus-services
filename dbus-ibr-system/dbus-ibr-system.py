@@ -116,8 +116,9 @@ class SystemMonitor(Monitor):
 
         elif "/Dc/0/Current" in values:
             cur = values["/Dc/0/Current"]
-            self.currents[service.name] = cur
-            self.system_service.publishBattLoad(sum(self.currents.values()))
+            if cur: # value is [] for multiplus2, if turned off
+                self.currents[service.name] = cur
+                self.system_service.publishBattLoad(sum(self.currents.values()))
 
         elif "/Settings/IbrSystem/GridEnergyPrice" in values:
             ep = values["/Settings/IbrSystem/GridEnergyPrice"]
@@ -130,8 +131,8 @@ class IbrSystemService(AioDbusService):
         super().__init__(bus, name="com.victronenergy.ibrsystem")
 
         # Compulsory paths
-        self.add_item(IntegerItem("/ProductId", None))
-        self.add_item(TextItem("/ProductName", None))
+        self.add_item(IntegerItem("/ProductId", 1))
+        self.add_item(TextItem("/ProductName", "ibrsystem"))
         self.add_item(IntegerItem("/DeviceInstance", 1))
         self.add_item(TextItem("/Mgmt/ProcessName", __file__))
         self.add_item(TextItem("/Mgmt/ProcessVersion", "0.1"))
@@ -167,14 +168,12 @@ async def amain(bus_type):
     bus = await MessageBus(bus_type=bus_type).connect()
 
     service = IbrSystemService(bus)
+    await service.register()
+
     monitor = await SystemMonitor.create(bus,
         lambda: MessageBus(bus_type=bus_type),
         service)
 
-    # Fire off update threads
-    loop = asyncio.get_event_loop()
-
-    await service.register()
 
     await bus.wait_for_disconnect()
 
