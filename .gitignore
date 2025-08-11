@@ -1,6 +1,9 @@
 *.swp
 tags
 tmp
+*~
+.*~
+__pycache__
 
 # Prerequisites
 *.d
