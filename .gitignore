@@ -37,3 +37,4 @@ __pycache__
 *.exe
 *.out
 *.app
+setup.log
