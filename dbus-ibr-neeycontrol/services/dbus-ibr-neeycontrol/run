@@ -1,3 +1,3 @@
 #!/bin/sh
 exec 2>&1
-exec /data/ibr-venus-services/dbus-ibr-neeycontrol/run.sh
+exec /opt/victronenergy/dbus-ibr-neeycontrol/run.sh

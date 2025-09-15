@@ -20,7 +20,7 @@ import dbus
 import time
 from datetime import datetime as dt  # for UTC time stamps for logging
 
-sys.path.append(os.path.join(os.path.dirname(__file__), './ext/velib_python'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '/data/ibr-venus-services/common/velib_python'))
 from vedbus import VeDbusService
 from dbusmonitor import DbusMonitor
 from ve_utils import exit_on_error
