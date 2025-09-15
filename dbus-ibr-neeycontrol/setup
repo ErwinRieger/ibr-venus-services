@@ -14,10 +14,11 @@
 #	then exit
 #	CommonResources will NOT return here !
 
-standardPromptAndActions='yes'
+# Init setuphelper and install application to
+# /opt/victronenergy
+source "/data/ibr-venus-services/common/setuphelper.sh"
 
-#### following line incorporates helper resources into this script
-source "/data/SetupHelper/HelperResources/IncludeHelpers"
-#### end of lines to include helper resources
+# Install "static" service to /opt/victronenergy
+echo "calling endSript with: $scriptAction"
+endScript '' 'INSTALL_SERVICES' ''
 
-# never returns from CommonResources !
