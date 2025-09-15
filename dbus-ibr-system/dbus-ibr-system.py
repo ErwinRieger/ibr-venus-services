@@ -16,7 +16,7 @@ except ImportError:
     from dbus_next.constants import BusType
 
 sys.path.insert(1, os.path.join(os.path.dirname(__file__), '..', 'aiovelib'))
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/data', 'etc', 'ibr-venus-services', 'aiovelib'))
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/data', 'ibr-venus-services', 'aiovelib'))
 
 from aiovelib.service import Service as AioDbusService
 from aiovelib.service import IntegerItem, TextItem, DoubleItem
