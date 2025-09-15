@@ -4,7 +4,7 @@ standardPromptAndActions='no'
 #### following line incorporates helper resources into this script
 source "/data/SetupHelper/HelperResources/IncludeHelpers"
 
-if [ -z "$scriptAction" ]; then
+if [ "$scriptAction" == "NONE" ]; then
     standardActionPrompt
 fi
 
