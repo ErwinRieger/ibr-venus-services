@@ -2,7 +2,10 @@
 standardPromptAndActions='no'
 
 #### following line incorporates helper resources into this script
-source "/data/SetupHelper/HelperResources/IncludeHelpers"
+if [ -z "$serviceDir" ]; then
+    echo "Including IncludeHelpers in setuphelper.sh..."
+    source "/data/SetupHelper/HelperResources/IncludeHelpers"
+fi
 
 if [ "$scriptAction" == "NONE" ]; then
     standardActionPrompt
