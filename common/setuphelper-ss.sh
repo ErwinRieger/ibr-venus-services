@@ -5,14 +5,18 @@ source "/data/SetupHelper/HelperResources/IncludeHelpers"
 serviceDir="/opt/victronenergy/service-templates"
 servicesDir="$scriptDir/service-templates"
 
-# intercept installService() call
-originstallService=installService
+# intercept installAllServices() call
 myinstallService() {
 
-    echo "intercept installService()"
+servicesList=( $( cd "$servicesDir"; ls -d * 2> /dev/null ) )
+firstservice=${servicesList[0]}
 
-    echo "calling : orig originstallService"
-    $originstallService $*
+installAllServices () {
+
+    echo "intercept installAllService()"
+
+    echo "calling : orig installService $firstservice"
+	installService $firstservice
 
     # Eneable serial starter service
     for usbdev in $(ls /dev/ttyUSB* 2>/dev/null); do
@@ -38,12 +42,9 @@ myinstallService() {
         fi
     done
 }
-installService=myInstallService
 
 if [ $scriptAction == 'INSTALL' ] && ! $installFailed ; then
     # avoid setup of /service/<service> in installService()
-    servicesList=( $( cd "$servicesDir"; ls -d * 2> /dev/null ) )
-    firstservice=${servicesList[0]}
     echo "touching /service/$firstservice"
     touch /service/$firstservice
 fi
