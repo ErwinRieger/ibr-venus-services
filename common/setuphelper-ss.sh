@@ -23,13 +23,13 @@ installAllServices () {
         pids=$(ps |grep "supervise.*$bn"|grep -v grep)
         if [ -z "$pids" ]; then
             dynservicedir="/service/${firstservice}.${bn}"
-            echo "process \"supervise $firstservice.$bn\" ($dynservicedir) not running, activating..."
+            echo "process \"supervise $firstservice for $bn\" ($dynservicedir) not running, activating..."
             if [ -e "$dynservicedir" ]; then
                 echo "$dynservicedir exists, skipping"
                 ls -ld $dynservicedir
                 continue
             fi
-            read -p "install for $firstservice.$bn to $dynservciedir (y/n)? "
+            read -p "install $firstservice for device $bn to $dynservciedir (y/n)? "
             if [ "$REPLY" == "y" ]; then
                 echo "enable ... $serviceDir/${firstservice} to $dynservicedir"
                 cp -R "$serviceDir/${firstservice}" "$dynservicedir" 
