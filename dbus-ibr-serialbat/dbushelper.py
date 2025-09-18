@@ -30,7 +30,7 @@ class DbusHelper:
         # bms_id = self.battery.production if self.battery.production is not None else \
         #     self.battery.port[self.battery.port.rfind('/') + 1:]
         bms_id = self.battery.port[self.battery.port.rfind('/') + 1:]
-        path = '/Settings/Devices/ibr-serialbatt_' + str(bms_id).replace(" ", "_")
+        path = '/Settings/Devices/ibrserialbatt_' + str(bms_id).replace(" ", "_")
         default_instance = 'battery:1'
         settings = {'instance': [path + '/ClassAndVrmInstance', default_instance, 0, 0], }
 
@@ -67,7 +67,7 @@ class DbusHelper:
         # Create the mandatory objects
         self._dbusservice.add_path('/DeviceInstance', self.instance)
         self._dbusservice.add_path('/ProductId', 0x0)
-        self._dbusservice.add_path('/ProductName', 'ibr-serialbat(' + self.battery.type + ') v' +
+        self._dbusservice.add_path('/ProductName', 'ibrserialbat(' + self.battery.type + ') v' +
                                    str(DRIVER_VERSION) + DRIVER_SUBVERSION)
         self._dbusservice.add_path('/FirmwareVersion', self.battery.version)
         self._dbusservice.add_path('/HardwareVersion', self.battery.hardware_version)

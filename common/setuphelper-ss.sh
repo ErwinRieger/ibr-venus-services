@@ -5,12 +5,10 @@ source "/data/SetupHelper/HelperResources/IncludeHelpers"
 serviceDir="/opt/victronenergy/service-templates"
 servicesDir="$scriptDir/service-templates"
 
-# intercept installAllServices() call
-myinstallService() {
-
 servicesList=( $( cd "$servicesDir"; ls -d * 2> /dev/null ) )
 firstservice=${servicesList[0]}
 
+# intercept installAllServices() call
 installAllServices () {
 
     echo "intercept installAllService()"
