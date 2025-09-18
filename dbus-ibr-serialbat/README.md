@@ -1,5 +1,5 @@
-dbus-serialbattery
-===================
+dbus-ibr-serialbat
+==================
 
 My minimal serialbattery driver for venus os, based on version v0.12b3 of https://github.com/Louisvdw/dbus-serialbattery.
 
