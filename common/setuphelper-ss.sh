@@ -33,7 +33,9 @@ installAllServices () {
             if [ "$REPLY" == "y" ]; then
                 echo "enable ... $serviceDir/${firstservice} to $dynservicedir"
                 cp -R "$serviceDir/${firstservice}" "$dynservicedir" 
-                # ln -s "$serviceDir/${firstservice}" "$dynservicedir" 
+                sed -i "s/TTY/$bn/g" "$dynservicedir/run"
+                echo "start $dynservicedir service..."
+                svc -u "$dynservicedir"
             fi
         else
             echo "<supervise.*$bn> running, do not activate service.."
