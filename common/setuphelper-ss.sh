@@ -20,10 +20,10 @@ installAllServices () {
     for usbdev in $(ls /dev/ttyUSB* 2>/dev/null); do
         bn=$(basename $usbdev)
         echo "bn: $bn"
-        pids=$(ps |grep "supervise.*$bn"|grep -v grep)
+        pids=$(ps |grep "python.*$bn"|grep -v grep)
         if [ -z "$pids" ]; then
             dynservicedir="/service/${firstservice}.${bn}"
-            echo "process \"supervise $firstservice for $bn\" ($dynservicedir) not running, activating..."
+            echo "process \"python $firstservice for $bn\" ($dynservicedir) not running, activating..."
             if [ -e "$dynservicedir" ]; then
                 echo "$dynservicedir exists, skipping"
                 ls -ld $dynservicedir
@@ -35,10 +35,11 @@ installAllServices () {
                 cp -R "$serviceDir/${firstservice}" "$dynservicedir" 
                 sed -i "s/TTY/$bn/g" "$dynservicedir/run"
                 echo "start $dynservicedir service..."
+                sleep 5
                 svc -u "$dynservicedir"
             fi
         else
-            echo "<supervise.*$bn> running, do not activate service.."
+            echo "<python.*$bn> running, do not activate service.."
         fi
     done
 }
