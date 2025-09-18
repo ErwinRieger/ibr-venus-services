@@ -38,7 +38,7 @@ elif [ $scriptAction == 'UNINSTALL' ] && ! $installFailed ; then
         fi
         grep -v "$f" "$installedFilesList" | tee "$installedFilesList" > /dev/null
     done
-    rmdir -f $destdir
+    rmdir $destdir
 else
     echo "ignoring script action: $scriptAction"
 fi
