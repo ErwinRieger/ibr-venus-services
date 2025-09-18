@@ -1,5 +1,5 @@
 battery.py
-dbus-ibr-serialbatt.py
+dbus-ibr-serialbat.py
 dbushelper.py
 daly.py
 felicity.py
