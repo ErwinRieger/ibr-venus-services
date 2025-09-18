@@ -5,22 +5,17 @@ source "/data/SetupHelper/HelperResources/IncludeHelpers"
 serviceDir="/opt/victronenergy/service-templates"
 servicesDir="$scriptDir/service-templates"
 
-if [ $scriptAction == 'INSTALL' ] && ! $installFailed ; then
-    # avoid setup of /service/<service> in installService()
-    servicesList=( $( cd "$servicesDir"; ls -d * 2> /dev/null ) )
-    firstservice=${servicesList[0]}
-    echo "touching /service/$firstservice"
-    touch /service/$firstservice
-fi
+# intercept installService() call
+originstallService=installService
+myinstallService() {
 
-# Handle prompt and install app to /opt/victronenergy
-source "/data/ibr-venus-services/common/setuphelper.sh"
+    echo "intercept installService()"
 
-# Enable serialstarter service:
-if [ $scriptAction == 'INSTALL' ] && ! $installFailed ; then
+    echo "calling : orig originstallService"
+    $originstallService $*
 
     # Eneable serial starter service
-    for usbdev in $(ls /dev/ttyUSB*); do
+    for usbdev in $(ls /dev/ttyUSB* 2>/dev/null); do
         bn=$(basename $usbdev)
         echo "bn: $bn"
         pids=$(ps |grep "supervise.*$bn"|grep -v grep)
@@ -42,7 +37,19 @@ if [ $scriptAction == 'INSTALL' ] && ! $installFailed ; then
             echo "<supervise.*$bn> running, do not activate service.."
         fi
     done
-else
-    echo "ignoring script action: $scriptAction"
+}
+installService=myInstallService
+
+if [ $scriptAction == 'INSTALL' ] && ! $installFailed ; then
+    # avoid setup of /service/<service> in installService()
+    servicesList=( $( cd "$servicesDir"; ls -d * 2> /dev/null ) )
+    firstservice=${servicesList[0]}
+    echo "touching /service/$firstservice"
+    touch /service/$firstservice
 fi
 
+# Handle prompt and install app to /opt/victronenergy
+source "/data/ibr-venus-services/common/setuphelper.sh"
+
+echo "End setup, calling endScript to install serial starter service ..."
+endScript '' 'INSTALL_SERVICES' ''
