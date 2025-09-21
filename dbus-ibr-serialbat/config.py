@@ -41,7 +41,5 @@ try:
     from config.local import *
 except ModuleNotFoundError:
     pass
-else:
-    pass
 
 
