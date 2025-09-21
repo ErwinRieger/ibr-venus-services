@@ -75,14 +75,14 @@ doifchangedormissing() {
     fi
 }
 
-# ss=""
+ss=""
 ttydev="$1"
 svcsrcdir="./service"
 svcdestdir="$prefix/opt/victronenergy/service/$svcname"
 if [ -d ./service-templates ]; then
     svcsrcdir="./service-templates"
     svcdestdir="$prefix/opt/victronenergy/service-templates/$svcname"
-    # ss="1"
+    ss="1"
     if [ -z "$ttydev" ]; then
         echo "!!! Warning: This is a serial-starter service, but no ttydev given, runtime !!!"
         echo "!!! service files will not be installed! !!!"
@@ -113,15 +113,16 @@ if [ "$cmd" = "install" ]; then
         doifchangedormissing copyandlog $svcsrcdir/$f $svcdestdir $f
     done
 
-    if [ -z "$ttydev" ]; then
-        # simple service, install to /service
-	    dstdir="$prefix/service/$svcname"
-        echo ""
-        echo "*** Install serialstarter service files to $dstdir"
-        for f in $(cd $svcsrcdir; find . -type f); do
-            doifchangedormissing copyandlog $svcsrcdir/$f $dstdir $f
-        done
+    if [ -z "$ss" ]; then
+            # simple service, install to /service
+	        dstdir="$prefix/service/$svcname"
+            echo ""
+            echo "*** Install serialstarter service files to $dstdir"
+            for f in $(cd $svcsrcdir; find . -type f); do
+                doifchangedormissing copyandlog $svcsrcdir/$f $dstdir $f
+            done
     else
+      if [ -n "$ttydev" ]; then
         # serialstarter, install to /var/volatile and link to /service
 	    dstdir="$prefix/var/volatile/services/$svcname.$ttydev"
         echo ""
@@ -142,6 +143,7 @@ if [ "$cmd" = "install" ]; then
         fi
         echo " ln -s $dstdir $dstdir2"
         ln -s $dstdir $dstdir2
+      fi
     fi
 else
     echo "Error, cmd $cmd not implemented."
