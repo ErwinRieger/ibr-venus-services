@@ -6,6 +6,7 @@ tmp
 *~
 .*~
 __pycache__
+all.py
 
 # Prerequisites
 *.d
