@@ -54,7 +54,7 @@ class NeeyControl(object):
             connection="Virtual",
             deviceinstance=1,
             productid=0,
-            productname="NeeyControl",
+            productname="ibrneeycontrol",
             firmwareversion=VERSION,
             hardwareversion="0.0",
             connected=1,

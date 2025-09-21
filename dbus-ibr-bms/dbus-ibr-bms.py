@@ -437,7 +437,7 @@ class DbusAggBatService(object):
             connection="Virtual",
             deviceinstance=1,
             productid=0,
-            productname="Sagg",
+            productname="ibrbms",
             firmwareversion=VERSION,
             hardwareversion="0.0",
             connected=1,
