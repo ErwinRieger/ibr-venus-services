@@ -12,24 +12,23 @@ if [ -d "service-templates" ]; then
     fi
     svcdev="${1}"
     ss=".${1}"
-elif [ -d "services" ]; then
-    svcsrc="services"
+elif [ -d "service" ]; then
+    svcsrc="service"
     svcdst="service"
 else
     echo "error, service[-templates] not found"
     exit 1
 fi
 
-svcpath=$(ls "$svcsrc"|head -n1)
-svcbase=$(basename "$svcpath")
-svcname="${svcbase}${ss}"
+svcbase="$(pwd)"
+svcname="$(basename $svcbase)"
 
 echo "checking $svcbase,  svcname: $svcname"
 
-dstdir="/opt/victronenergy/$svcbase"
+dstdir="/opt/victronenergy/$svcname"
 echo "check app-install in $dstdir:"
 if [ -d "$dstdir" ]; then
-    for i in $(ls $dstdir/*.sh $dstdir/*.py); do
+    for i in $(ls $dstdir/*.sh $dstdir/*.py 2>/dev/null); do
 	    bn=$(basename $i)
 	    echo "    check: $bn $i"
 	    if ! test -f $i; then
@@ -45,20 +44,20 @@ else
 fi
 
 if [ -z "$ss" ]; then
-	dstdir="/opt/victronenergy/service"
+	dstdir="/opt/victronenergy/service/$svcname"
 else
-	dstdir="/opt/victronenergy/service-templates"
+	dstdir="/opt/victronenergy/service-templates/$svcname"
 fi
 echo "check service-install in $dstdir:"
 if [ -d "$dstdir" ]; then
-    for i in $(cd $svcsrc; find $svcbase -type f); do
+    for i in $(cd $svcsrc; find . -type f); do
 	    bn=$(basename $i)
 	    echo "    check: $i $bn"
 	    if ! test -f $dstdir/$i; then
 		     echo "Warning files does not exst: $dstdir/$i"
 		     continue
 	    fi
-	    if ! diff $svcsrc/$i $dstdir/$i; then
+	    if ! cmp $svcsrc/$i $dstdir/$i; then
 		     echo "Warning files differ: $svcsrc/$i <-> $dstdir/$i"
 	    fi
     done
@@ -67,14 +66,14 @@ else
 fi
 
 if [ -n "$ss" ]; then
-	dstdir="/var/volatile/services/$svcname"
+	dstdir="/var/volatile/services/$svcname.$svcdev"
 	echo "check service-install in $dstdir:"
 	if [ -d "$dstdir" ]; then
-    	    for i in $(cd $svcsrc/$svcbase; find . -type f); do
+    	    for i in $(cd $svcsrc; find . -type f); do
 	    	bn=$(basename $i)
 	    	echo "    check: $i $bn"
 		if [ "$bn" == "run" ]; then
-			sed "s/TTY/$svcdev/" $svcsrc/$svcbase/$i > /tmp/run
+			sed "s/TTY/$svcdev/" $svcsrc/$i > /tmp/run
 		else
 		     	echo "Warning unknown file: $i"
 		fi
@@ -82,7 +81,7 @@ if [ -n "$ss" ]; then
 		     	echo "Warning file does not exst: $dstdir/$i"
 		     	continue
 	    	fi
-	    	if ! diff /tmp/run $dstdir/$i; then
+	    	if ! cmp /tmp/run $dstdir/$i; then
 		     	echo "Warning files differ: /tmp/run <-> $dstdir/$i"
 	    	fi
     	    done
@@ -91,14 +90,14 @@ if [ -n "$ss" ]; then
 	fi
 fi
 
-dstdir="/service/$svcname"
+dstdir="/service/$svcname${ss}"
 echo "check service-install in $dstdir:"
 if [ -d "$dstdir" ]; then
-    	    for i in $(cd $svcsrc/$svcbase; find . -type f); do
+    	    for i in $(cd $svcsrc; find . -type f); do
 	    	bn=$(basename $i)
 	    	echo "    check: $i $bn"
 		if [ "$bn" == "run" ]; then
-			sed "s/TTY/$svcdev/" $svcsrc/$svcbase/$i > /tmp/run
+			sed "s/TTY/$svcdev/" $svcsrc/$i > /tmp/run
 		else
 		     	echo "Warning unknown file: $i"
 		fi
@@ -106,7 +105,7 @@ if [ -d "$dstdir" ]; then
 		     	echo "Warning file does not exst: $dstdir/$i"
 		     	continue
 	    	fi
-	    	if ! diff /tmp/run $dstdir/$i; then
+	    	if ! cmp /tmp/run $dstdir/$i; then
 		     	echo "Warning files differ: /tmp/run <-> $dstdir/$i"
 	    	fi
     	    done
