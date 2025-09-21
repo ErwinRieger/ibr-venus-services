@@ -149,50 +149,6 @@ class Battery(object):
         # return false when fail, true if successful
         return False
 
-    def get_min_cell(self):
-        min_voltage = 9999
-        min_cell = None
-        if len(self.cells) == 0 and hasattr(self, 'cell_min_no'):
-            return self.cell_min_no
-
-        for c in range(min(len(self.cells), self.cell_count)):
-            if self.cells[c].voltage is not None and min_voltage > self.cells[c].voltage:
-                min_voltage = self.cells[c].voltage
-                min_cell = c
-        return min_cell
-
-    def get_max_cell(self):
-        max_voltage = 0
-        max_cell = None
-        if len(self.cells) == 0 and hasattr(self, 'cell_max_no'):
-            return self.cell_max_no
-
-        for c in range(min(len(self.cells), self.cell_count)):
-            if self.cells[c].voltage is not None and max_voltage < self.cells[c].voltage:
-                max_voltage = self.cells[c].voltage
-                max_cell = c
-        return max_cell
-
-    def get_min_cell_desc(self):
-        cell_no = self.get_min_cell()
-        return cell_no if cell_no is None else 'C' + str(cell_no + 1)
-
-    def get_max_cell_desc(self):
-        cell_no = self.get_max_cell()
-        return cell_no if cell_no is None else 'C' + str(cell_no + 1)
-
-    def get_cell_voltage(self, idx):
-        if idx>=min(len(self.cells), self.cell_count):
-          return None
-        return self.cells[idx].voltage
- 
-    def get_cell_balancing(self, idx):
-        if idx>=min(len(self.cells), self.cell_count):
-          return None
-        if self.cells[idx].balance is not None and self.cells[idx].balance:
-          return 1
-        return 0
-
     def get_capacity_remain(self):
         if self.capacity_remain is not None:
             return self.capacity_remain

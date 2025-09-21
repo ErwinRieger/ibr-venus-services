@@ -109,10 +109,10 @@ class DbusHelper:
         self._dbusservice.add_path('/System/MaxCellTemperature', None, writeable=True)
         self._dbusservice.add_path('/System/MaxCellVoltage', None, writeable=True,
                                    gettextcallback=lambda p, v: "{:0.3f}V".format(v))
-        self._dbusservice.add_path('/System/MaxVoltageCellId', None, writeable=True)
+        # self._dbusservice.add_path('/System/MaxVoltageCellId', None, writeable=True)
         self._dbusservice.add_path('/System/MinCellVoltage', None, writeable=True,
                                    gettextcallback=lambda p, v: "{:0.3f}V".format(v))
-        self._dbusservice.add_path('/System/MinVoltageCellId', None, writeable=True)
+        # self._dbusservice.add_path('/System/MinVoltageCellId', None, writeable=True)
         self._dbusservice.add_path('/History/ChargeCycles', None, writeable=True)
         self._dbusservice.add_path('/History/TotalAhDrawn', None, writeable=True)
         self._dbusservice.add_path('/Ess/Throttling', None, writeable=True)
@@ -228,8 +228,8 @@ class DbusHelper:
         # self._dbusservice['/Info/MaxChargeVoltage'] = self.battery.control_voltage
         
         # Updates from cells
-        self._dbusservice['/System/MinVoltageCellId'] = self.battery.get_min_cell_desc()
-        self._dbusservice['/System/MaxVoltageCellId'] = self.battery.get_max_cell_desc()
+        # self._dbusservice['/System/MinVoltageCellId'] = self.battery.get_min_cell_desc()
+        # self._dbusservice['/System/MaxVoltageCellId'] = self.battery.get_max_cell_desc()
         self._dbusservice['/System/MinCellVoltage'] = self.battery.get_min_cell_voltage()
         self._dbusservice['/System/MaxCellVoltage'] = self.battery.get_max_cell_voltage()
         self._dbusservice['/Ess/Throttling'] = self.battery.throttling
