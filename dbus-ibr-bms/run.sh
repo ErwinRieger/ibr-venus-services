@@ -2,5 +2,5 @@
 
 . /opt/victronenergy/serial-starter/run-service.sh
 
-app="python3 /opt/victronenergy/venus-os_dbus-aggregate-batteries/aggregatebatteries.py"
+app="python3 /opt/victronenergy/dbus-ibr-bms/dbus-ibr-bms.py"
 start 

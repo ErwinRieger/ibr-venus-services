@@ -405,7 +405,7 @@ dummy = {"code": None, "whenToLog": "configChange", "accessLevel": None}
 
 class DbusAggBatService(object):
 
-    def __init__(self, servicename="com.victronenergy.battery.aggregate"):
+    def __init__(self, servicename=f"com.victronenergy.{SERVICENAME}.aggregate"):
         super(DbusAggBatService, self).__init__()
 
         self.maindbusmon = DbusMonitor({
@@ -591,7 +591,7 @@ class DbusAggBatService(object):
     # a unnessesary delay/timeout. So filter our own service out here:
     def scan_dbus_service(self, serviceName):
         logger.info("scan_service: " + serviceName)
-        if serviceName.startswith("com.victronenergy.battery.aggregate"):
+        if serviceName.startswith(f"com.victronenergy.{SERVICENAME}.aggregate"):
             return False
         return self.busmon_scan_dbus_service(serviceName)
 
@@ -870,7 +870,7 @@ def main():
 
     from dbusmonitor import DbusMonitor
 
-    logger.info("%s: Starting aggregate charger." % (datetime.datetime.now()).strftime("%c"))
+    logger.info("%s: Starting ibr bms service." % (datetime.datetime.now()).strftime("%c"))
     from dbus.mainloop.glib import DBusGMainLoop
 
     DBusGMainLoop(set_as_default=True)

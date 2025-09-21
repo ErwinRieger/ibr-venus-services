@@ -9,6 +9,9 @@ BATTERY_CAPACITY = (100*0.9)
 # enter floating state 
 BALANCETIME = 5 * 60 # [s]
 
+# Rename to "battery" to, ibrbatt is for debugging
+SERVICENAME="ibrbatt"
+
 #
 # Import loal settings
 #
