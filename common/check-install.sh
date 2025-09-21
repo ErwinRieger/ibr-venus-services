@@ -20,7 +20,7 @@ else
     exit 1
 fi
 
-svcpath=$(ls "$svcsrc"|head -1)
+svcpath=$(ls "$svcsrc"|head -n1)
 svcbase=$(basename "$svcpath")
 svcname="${svcbase}${ss}"
 
