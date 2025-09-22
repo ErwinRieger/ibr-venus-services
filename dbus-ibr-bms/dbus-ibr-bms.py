@@ -768,21 +768,27 @@ class DbusAggBatService(object):
         logger.info(f"chargevoltage: {v:.3f}V, charge current: {i}A")
 
         # turn on/off battery
+        essminsoc = 10 # xxx must match setting in ESS/inverter
+        fakesoc = avgsoc
         if turnOff:
             if not self.turnedOff:
                 self.turnedOff = True
                 self.turnedOffSoc = avgsoc
-                self._dbusservice[ "/Soc" ] = 5
         else:
-            if avgsoc >= self.turnedOffSoc+5:
+            if self.turnedOff and avgsoc >= self.turnedOffSoc+5:
                 self.turnedOff = False
 
-        fakesoc = 5
-        if not self.turnedOff:
-            self._dbusservice[ "/Soc" ] = avgsoc
-            fakesoc = avgsoc
+        if self.turnedOff:
+            # force batt off?
+            fakesoc = min(avgsoc, essminsoc - 2)
+        else:
+            # keep batt alive?
+            # if avgsoc <= essminsoc+2:
+                # fakesoc = essminsoc + 2
+            fakesoc = max(avgsoc, essminsoc + 2)
 
         logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc}, turn-on-soc: {self.turnedOffSoc+5}, fake-soc: {fakesoc}")
+        self._dbusservice[ "/Soc" ] = fakesoc
         return True
 
     def addBatteryWrapper(self, batt):
