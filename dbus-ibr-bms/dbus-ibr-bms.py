@@ -5,6 +5,41 @@ Service to aggregate multiple (serial-) batteries into one virtual battery and
 to implement a charging algorithm for them.
 """
 
+"""
+XXXX
+
+watch (entire) batsoc and (bank-) min cellvoltage (xxx bank- dynamic low bound) and
+control ESS/inverter through faked (entire-) battsoc
+
+minsoc: 10%
+onsoc:  15%
+
+batsoc (bank):
+
+
+fakesoc (entire):
+
+
+hysterese:
+
+    zum ausschalten:
+        flag setzen
+        wir merken uns beim ausschalten den aktuellen gesamt-soc
+        fake-soc auf 5% setzen, dadurch inverter aus
+
+    wenn wir turned off sind und batt-spannung sich erholt hat:
+        warten bis gesamt-soc >= dem gemerkten end-sock+hysterese (10%) ist
+
+        --> fake beenden und realen (10%) grösseren gesamt-sock "freigeben"
+            xxx: es ist nicht gesagt, dass der inverter dann auch schon wieder
+            einschaltet, da er ja eine eigene hysterese hat...
+
+        
+
+
+    
+"""
+
 from gi.repository import GLib
 import logging
 import sys, os, time, math
@@ -270,6 +305,9 @@ class battery(object):
 
         self.testdone = False
 
+        # self.cellCutoff = 3.0
+        self.turnOff = False
+
     def get_value(self, path):
         return self.dbusmon.get_value(self.batt, path)
 
@@ -299,16 +337,17 @@ class battery(object):
         ubatt = self.dbusmon.get_value(self.batt, "/Dc/0/Voltage")
         self.cbatt = self.dbusmon.get_value(self.batt, "/Dc/0/Current")
         self.ucell = self.dbusmon.get_value(self.batt, "/System/MaxCellVoltage")
+        ucell_min = self.dbusmon.get_value(self.batt, "/System/MinCellVoltage")
         self.voltagediff = self.dbusmon.get_value(self.batt, "/Voltages/Diff")
         self.bmssoc = self.dbusmon.get_value(self.batt, "/Soc")
 
         self.bhistory.update(self.cbatt)
-        battas = self.bhistory.As()
+        cavg = self.bhistory.As()
 
         if self.sm.current_state == self.sm.bulk:
             bcv = max(
                 cellpull,
-                round( min( cellpull + vrange * (battas-C100) / C2, MAX_CHARGING_CELL_VOLTAGE ), 2)
+                round( min( cellpull + vrange * (cavg-C100) / C2, MAX_CHARGING_CELL_VOLTAGE ), 2)
                 )
         elif self.sm.current_state == self.sm.balancing:
             bcv = cellpull
@@ -319,7 +358,7 @@ class battery(object):
                 bcv = cellpull
 
         self.f_u = fu(self.ucell, bcv)
-        f_i = fi(battas)
+        f_i = fi(cavg)
         self.estsoc = min( self.f_u * f_i * 100, 99 )
 
         # yyyy debug
@@ -357,7 +396,7 @@ class battery(object):
         else:
             diff += 16 * min(bcv - self.ucell, 0.005)
 
-        logger.info(f"    U: {ubatt:.3f}V, I: {self.cbatt:.3f}A, iavg: {battas:.3f}A, max: {self.ucell:.3f}V, bcv: {bcv:.3f}V, diff: {diff:.3f}V")
+        logger.info(f"    U: {ubatt:.3f}V, I: {self.cbatt:.3f}A, iavg: {cavg:.3f}A, max: {self.ucell:.3f}V, bcv: {bcv:.3f}V, diff: {diff:.3f}V")
 
         diffvolt = max( min(cvavg - ubatt, 1), 0)
 
@@ -372,8 +411,21 @@ class battery(object):
         logger.info(f"    CV: {16*bcv:.3f}V + {self.kp*diff:.3f}(P) + {self.ysum:.3f}(ysum) + {diffvolt:.3f}(cable) = {cv:.3f}")
             
         self.chargevoltage = cv
-
         logger.info(f"    fu: {self.f_u:.2f}, fi: {f_i:.2f}, estimsoc: {self.estsoc:.1f}%")
+
+        # Dynamic cut off voltage
+        if cavg:
+            cellCutoff = max(2.75, 3.0 + 0.25 * (cavg/BATTERY_CAPACITY))
+        else:
+            cellCutoff = 3.0
+
+        if ucell_min <= cellCutoff:
+            self.turnOff = True
+        else:
+            self.turnOff = False
+
+        logger.info(f"    minvolt: {ucell_min:.3f}V, cellcutoff: {cellCutoff:.3f}V, turnoff: {self.turnOff}")
+
 
 class history(object):
 
@@ -407,6 +459,10 @@ class DbusAggBatService(object):
 
     def __init__(self, servicename=f"com.victronenergy.{SERVICENAME}.aggregate"):
         super(DbusAggBatService, self).__init__()
+
+        self.turnedOff = False
+        self.turnedOffSoc = 0
+        # self.fakeSoc = None
 
         self.maindbusmon = DbusMonitor({
                         "com.victronenergy.battery" : { "/Soc": dummy }, 
@@ -481,7 +537,7 @@ class DbusAggBatService(object):
             )
 
         self.avgPath = (
-            "Soc",
+            # "Soc",
             )
 
         self.ownPath = (
@@ -490,6 +546,7 @@ class DbusAggBatService(object):
             "Ess/Balancing",
             "Ess/Chgmode",
             "Ess/Throttling",
+            "Soc",
             # "TimeToGo",
             )
 
@@ -553,6 +610,8 @@ class DbusAggBatService(object):
 
         self.lastmaxcc = None
         self._dbusservice.add_path('/Info/MaxChargeCurrent', 0, writeable=True, gettextcallback=lambda p, v: "{:2.2f}A".format(v))
+
+        self._dbusservice.add_path('/Soc', 33, writeable=True)
 
         self.lastTime = time.time()
 
@@ -634,6 +693,8 @@ class DbusAggBatService(object):
         balancing = []
         throttling = False
         chgmode = "bulk"
+        turnOff = False
+        avgsoc = []
         for batt in self.batteries.values():
 
             batt.update(cvavg, allfloat)
@@ -655,6 +716,13 @@ class DbusAggBatService(object):
                 chgmode = "balancing"
             elif allfloat:
                 chgmode = "floating"
+
+            if batt.turnOff:
+                turnOff = True
+
+            avgsoc.append(batt.bmssoc)
+
+        avgsoc = sum(avgsoc) / len(avgsoc)
 
         self._dbusservice['/Ess/Balancing'] = balancing
         self._dbusservice['/Ess/Chgmode'] = chgmode
@@ -698,6 +766,23 @@ class DbusAggBatService(object):
             self.lastmaxcc = i
 
         logger.info(f"chargevoltage: {v:.3f}V, charge current: {i}A")
+
+        # turn on/off battery
+        if turnOff:
+            if not self.turnedOff:
+                self.turnedOff = True
+                self.turnedOffSoc = avgsoc
+                self._dbusservice[ "/Soc" ] = 5
+        else:
+            if avgsoc >= self.turnedOffSoc+5:
+                self.turnedOff = False
+
+        fakesoc = 5
+        if not self.turnedOff:
+            self._dbusservice[ "/Soc" ] = avgsoc
+            fakesoc = avgsoc
+
+        logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc}, turn-on-soc: {self.turnedOffSoc+5}, fake-soc: {fakesoc}")
         return True
 
     def addBatteryWrapper(self, batt):
