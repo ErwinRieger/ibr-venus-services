@@ -418,6 +418,10 @@ class DbusAggBatService(object):
                             "/Dc/0/Voltage": dummy,
                             "/Dc/0/Current": dummy,
                         },
+                        'com.victronenergy.vebus': {
+                            "/Dc/0/Voltage": dummy,
+                            "/Dc/0/Current": dummy,
+                        },
                         'com.victronenergy.solarcharger': {
                             "/Dc/0/Voltage": dummy,
                         },
@@ -446,7 +450,7 @@ class DbusAggBatService(object):
         self._dbusservice.add_path('/Ess/Balancing', [], writeable=True)
         self._dbusservice.add_path('/Ess/Chgmode', "bulk", writeable=True)
         self._dbusservice.add_path('/Ess/Throttling', False, writeable=True)
-        self._dbusservice.add_path('/TimeToGo', 1)
+        # self._dbusservice.add_path('/TimeToGo', 1)
 
         self.addPath = (
             "Info/MaxDischargeCurrent",
@@ -486,7 +490,7 @@ class DbusAggBatService(object):
             "Ess/Balancing",
             "Ess/Chgmode",
             "Ess/Throttling",
-            "TimeToGo",
+            # "TimeToGo",
             )
 
         self.minPath = (
@@ -564,6 +568,8 @@ class DbusAggBatService(object):
         for multi in self.maindbusmon.get_service_list(classfilter="com.victronenergy.multi") or {}:
             self.chargers[multi] = 1
             self.inverters[multi] = 1
+        for multiplus in self.maindbusmon.get_service_list(classfilter="com.victronenergy.vebus") or {}:
+            self.inverters[multiplus] = 1
 
         logger.info(f"chargers: {self.chargers}")
         logger.info(f"inverters: {self.inverters}")
