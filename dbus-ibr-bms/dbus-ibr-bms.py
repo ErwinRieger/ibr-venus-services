@@ -769,25 +769,23 @@ class DbusAggBatService(object):
 
         # turn on/off battery
         essminsoc = 10 # xxx must match setting in ESS/inverter
-        fakesoc = avgsoc
         if turnOff:
             if not self.turnedOff:
                 self.turnedOff = True
                 self.turnedOffSoc = avgsoc
         else:
-            if self.turnedOff and avgsoc >= self.turnedOffSoc+5:
+            if self.turnedOff and avgsoc >= self.turnedOffSoc+10:
                 self.turnedOff = False
 
+        fakesoc = avgsoc
         if self.turnedOff:
             # force batt off?
             fakesoc = min(avgsoc, essminsoc - 2)
         else:
             # keep batt alive?
-            # if avgsoc <= essminsoc+2:
-                # fakesoc = essminsoc + 2
             fakesoc = max(avgsoc, essminsoc + 2)
 
-        logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc}, turn-on-soc: {self.turnedOffSoc+5}, fake-soc: {fakesoc}")
+        logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc}, turn-on-soc: {self.turnedOffSoc+10}, fake-soc: {fakesoc}")
         self._dbusservice[ "/Soc" ] = fakesoc
         return True
 
