@@ -107,7 +107,7 @@ class SystemMonitor(Monitor):
         return sum(self.yields.values())
 
     def itemsChanged(self, service, values):
-        logger.debug(f"items changed, service: {service.name}, values: {values}")
+        # logger.debug(f"items changed, service: {service.name}, values: {values}")
 
         if "/Yield/User" in values:
             pvyield = values["/Yield/User"]
@@ -153,13 +153,13 @@ class IbrSystemService(AioDbusService):
 
     def publishPVYield(self, pvyield):
         earn = pvyield * self.gridEnergyPrice
-        logger.debug(f"publish yield: {pvyield}, earn: {earn}")
+        # logger.debug(f"publish yield: {pvyield}, earn: {earn}")
         with self as s:
             s['/TotalPVYield'] = pvyield
             s['/TotalPVEarnings'] = earn
 
     def publishBattLoad(self, load):
-        logger.debug(f"publish load: {load}")
+        # logger.debug(f"publish load: {load}")
         with self as s:
             s['/BattLoad'] = load
 
