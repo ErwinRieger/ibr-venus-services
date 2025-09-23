@@ -31,8 +31,8 @@ BATTERY_CAPACITY = 50
 # Invert Battery Current. Default non-inverted. Set to -1 to invert
 INVERT_CURRENT_MEASUREMENT = -1
 
-# Rename to "battery" to, ibrbatt is for debugging
-SERVICENAME="ibrbatt"
+# Service name for debugging
+SERVICENAME="battery"
 
 #
 # Import loal settings
