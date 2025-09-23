@@ -461,7 +461,7 @@ class DbusAggBatService(object):
         super(DbusAggBatService, self).__init__()
 
         self.turnedOff = False
-        self.turnedOffSoc = 0
+        self.turnOnSoc = 0
         # self.fakeSoc = None
 
         self.maindbusmon = DbusMonitor({
@@ -507,6 +507,8 @@ class DbusAggBatService(object):
         self._dbusservice.add_path('/Ess/Chgmode', "bulk", writeable=True)
         self._dbusservice.add_path('/Ess/Throttling', False, writeable=True)
         # self._dbusservice.add_path('/TimeToGo', 1)
+        self._dbusservice.add_path('/Ibr/Debug/ForceSoc', 0, writeable=True,
+                                   onchangecallback=self.forceSocChanged)
 
         self.addPath = (
             "Info/MaxDischargeCurrent",
@@ -583,7 +585,6 @@ class DbusAggBatService(object):
             'FirmwareVersion',
             'HardwareVersion',
             'Connected',
-            'Ess/ForceMode',
             "Dc/0/MidVoltage",
             "Dc/0/MidVoltageDeviation",
             "History/ChargeCycles",
@@ -772,9 +773,9 @@ class DbusAggBatService(object):
         if turnOff:
             if not self.turnedOff:
                 self.turnedOff = True
-                self.turnedOffSoc = avgsoc
+                self.turnOnSoc = min(avgsoc + 10, essminsoc+5)
         else:
-            if self.turnedOff and avgsoc >= self.turnedOffSoc+10:
+            if self.turnedOff and avgsoc >= self.turnOnSoc
                 self.turnedOff = False
 
         fakesoc = avgsoc
@@ -787,7 +788,11 @@ class DbusAggBatService(object):
             # keep batt alive?
             fakesoc = max(avgsoc, essminsoc + 2)
 
-        logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc}, turn-on-soc: {self.turnedOffSoc+10}, fake-soc: {fakesoc}")
+        forcesoc = self._dbusservice['/Ibr/Debug/ForceSoc']
+        if forcesoc:
+            fakesoc = forcesoc
+
+        logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc}, turnOnSoc: {self.turnOnSoc}, fake-soc: {fakesoc}")
         self._dbusservice[ "/Soc" ] = fakesoc
         return True
 
@@ -958,6 +963,9 @@ class DbusAggBatService(object):
             self._dbusservice[path] = value
 
         return
+
+    def forceSocChanged(self, path, force):
+        self.forceSoc = force
 
 
 # ################
