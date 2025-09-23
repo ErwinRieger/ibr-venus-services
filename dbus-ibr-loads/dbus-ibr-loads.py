@@ -135,31 +135,24 @@ class ESS(object):
         pbatt = self._dbusmonitor.get_value("com.victronenergy.system", "/Dc/Battery/Power") or 0
 
         pdest = 0
-        # pdest = avgp
-        # self.pbatt = calculate_rtt(self.pbatt, pbatt, scale=0.1)
         self.pbatt = calculate_rtt(self.pbatt, pbatt, scale=0.01)
 
         if True: # not th:
             if chgmode == 0 or chgmode == "bulk": # bulk
                 pdest = 0.75*self.pvavg
             elif chgmode == 1 or chgmode == "balancing": # balance
-                pdest = self.pbatt * -0.5 # min(abs(self.pbatt), 0.25*self.pvavg) # 100 # self.pbatt
-                # if self.pbatt < 0:
-                    # pdest *= 1.25
-                   # pdest = min(pbatt*0.5, 0.2*self.pvavg) # pbatt # pbatt * 0.5
-                   # pdest = 50 # self.pbatt
-                # else:
-                   # pdest = min(pbatt*-0.5, 100) # pbatt * 0.5
+
+                if self.pbatt > 0:
+                    pdest = 50
+                else:
+                    pdest = self.pbatt * -1 + 50
             elif chgmode == 2: # sink
                 pass
             else: # 3 float "floating"
-                pdest = self.pbatt * -0.5 # min(abs(self.pbatt), 0.25*self.pvavg) # 75 # self.pbatt
-                # if self.pbatt < 0:
-                    # pdest *= 1.25
-                   # pdest = min(pbatt*0.5, 0.2*self.pvavg) # pbatt # pbatt * 0.5
-                   # pdest = 50 # self.pbatt
-                # else:
-                   # pdest = min(pbatt*-0.5, 100) # pbatt * 0.5
+                if self.pbatt > 0:
+                    pdest = 30
+                else:
+                    pdest = self.pbatt * -1 + 30
 
         pbattchg = pdest # int(self.pbatt)
 
