@@ -1,8 +1,14 @@
 
+dev="$1"
+
 srcdir="$(pwd)"
-svcname="$(basename $srcdir)"
+svcname="$(basename $srcdir)${dev}"
+
 echo "svc -d /service/$svcname"
 svc -d /service/$svcname
+
 sleep 1;
+
 echo "svc -u /service/$svcname"
 svc -u /service/$svcname
+
