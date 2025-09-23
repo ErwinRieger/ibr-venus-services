@@ -463,6 +463,7 @@ class DbusAggBatService(object):
         self.turnedOff = False
         self.turnOnSoc = 0
         # self.fakeSoc = None
+        self.forceSoc = 0
 
         self.maindbusmon = DbusMonitor({
                         "com.victronenergy.battery" : { "/Soc": dummy }, 
@@ -549,6 +550,7 @@ class DbusAggBatService(object):
             "Ess/Chgmode",
             "Ess/Throttling",
             "Soc",
+            "Ibr/Debug/ForceSoc",
             # "TimeToGo",
             )
 
@@ -775,7 +777,7 @@ class DbusAggBatService(object):
                 self.turnedOff = True
                 self.turnOnSoc = min(avgsoc + 10, essminsoc+5)
         else:
-            if self.turnedOff and avgsoc >= self.turnOnSoc
+            if self.turnedOff and avgsoc >= self.turnOnSoc:
                 self.turnedOff = False
 
         fakesoc = avgsoc
@@ -788,9 +790,8 @@ class DbusAggBatService(object):
             # keep batt alive?
             fakesoc = max(avgsoc, essminsoc + 2)
 
-        forcesoc = self._dbusservice['/Ibr/Debug/ForceSoc']
-        if forcesoc:
-            fakesoc = forcesoc
+        if self.forceSoc:
+            fakesoc = self.forceSoc
 
         logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc}, turnOnSoc: {self.turnOnSoc}, fake-soc: {fakesoc}")
         self._dbusservice[ "/Soc" ] = fakesoc
@@ -965,6 +966,8 @@ class DbusAggBatService(object):
         return
 
     def forceSocChanged(self, path, force):
+        logger.info(f"forcesoc: {path}, {force}, {type(force)}")
+        self._dbusservice[path] = force
         self.forceSoc = force
 
 
