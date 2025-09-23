@@ -414,10 +414,10 @@ class battery(object):
         logger.info(f"    fu: {self.f_u:.2f}, fi: {f_i:.2f}, estimsoc: {self.estsoc:.1f}%")
 
         # Dynamic cut off voltage
-        if cavg:
-            cellCutoff = max(2.75, 3.0 + 0.25 * (cavg/BATTERY_CAPACITY))
+        if self.cbatt:
+            cellCutoff = max(2.85, 3.1 + 0.25 * (min(self.cbatt, 0)/BATTERY_CAPACITY))
         else:
-            cellCutoff = 3.0
+            cellCutoff = 3.1
 
         if ucell_min <= cellCutoff:
             self.turnOff = True
