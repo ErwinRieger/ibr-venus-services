@@ -52,6 +52,7 @@ sys.path.insert(1, '/data/ibr-venus-services/common/python')
 from vedbus import VeDbusService
 from dbusmonitor import DbusMonitor, Service, notfound, MonitoredValue
 from ve_utils import exit_on_error
+from venus_service_utils import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
