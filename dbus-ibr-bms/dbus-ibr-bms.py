@@ -798,7 +798,7 @@ class DbusAggBatService(object):
 
             # force batt off?
             # avoid victron ess charging start (starting at 5% soc?)
-            bound(6, avgsoc, essminsoc)
+            fakesoc = bound(6, avgsoc, essminsoc)
         else:
             # keep batt alive?
             fakesoc = max(avgsoc, essminsoc + 4) # SocSwitchOffset = 3.0
