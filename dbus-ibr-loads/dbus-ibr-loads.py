@@ -14,7 +14,8 @@ import os, time
 
 import libmqtt
 
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/data/ibr-venus-services/common/velib_python'))
+sys.path.insert(1, '/data/ibr-venus-services/common/velib_python')
+# sys.path.insert(1, '/data/ibr-venus-services/common/python')
 
 from vedbus import VeDbusService
 from dbusmonitor import DbusMonitor

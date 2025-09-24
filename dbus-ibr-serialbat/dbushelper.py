@@ -4,8 +4,9 @@ import os
 import platform
 import dbus
 
-# Victron packages
-sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/dbus-systemcalc-py/ext/velib_python'))
+sys.path.insert(1, '/data/ibr-venus-services/common/python')
+sys.path.insert(1, '/data/ibr-venus-services/common/velib_python')
+
 from vedbus import VeDbusService
 from settingsdevice import SettingsDevice
 import battery

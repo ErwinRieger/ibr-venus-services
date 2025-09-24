@@ -46,7 +46,9 @@ import sys, os, time, math
 import dbus
 import datetime
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '/data/ibr-venus-services/common/velib_python'))
+sys.path.insert(1, '/data/ibr-venus-services/common/velib_python')
+sys.path.insert(1, '/data/ibr-venus-services/common/python')
+
 from vedbus import VeDbusService
 from dbusmonitor import DbusMonitor, Service, notfound, MonitoredValue
 from ve_utils import exit_on_error
