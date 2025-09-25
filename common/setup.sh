@@ -43,7 +43,7 @@ copyandlog() {
     fi
 
     echo "copy $src -> $dst"
-    cp $src $dst
+    cp -p $src $dst
 }
 
 sedandcopy() {
