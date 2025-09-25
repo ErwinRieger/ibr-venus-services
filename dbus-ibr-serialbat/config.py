@@ -38,7 +38,7 @@ SERVICENAME="battery"
 # Import loal settings
 #
 try:
-    from config.local import *
+    from config_local import *
 except ModuleNotFoundError:
     pass
 

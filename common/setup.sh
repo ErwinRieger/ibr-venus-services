@@ -106,8 +106,8 @@ if [ "$cmd" = "install" ]; then
         # echo "copy $f to $dstdir;"
         doifchangedormissing copyandlog $f $dstdir $f
     done
-    if [ -f "config.local_py" ]; then
-        doifchangedormissing copyandlog config.local_py $dstdir config.local_py
+    if [ -f "config_local.py" ]; then
+        doifchangedormissing copyandlog config_local.py $dstdir config_local.py
     fi
 
     echo ""
