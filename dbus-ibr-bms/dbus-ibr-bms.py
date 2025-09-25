@@ -629,22 +629,17 @@ class DbusAggBatService(object):
         self.history = history(30) # 120
         # end charger
 
-        # xxx multi plus missing!
         # xxx make services dynamic
-        self.chargers = self.maindbusmon.get_service_list(classfilter="com.victronenergy.solarcharger") or {}
-        self.inverters = self.maindbusmon.get_service_list(classfilter="com.victronenergy.inverter") or {}
-        # for inverter in self.inverters:
-            # self.chargers[inverter] = 1
+        self.dcdevices = self.maindbusmon.get_service_list(classfilter="com.victronenergy.solarcharger") or {}
+        for inverter in self.maindbusmon.get_service_list(classfilter="com.victronenergy.inverter") or {}:
+            self.dcdevices[inverter] = 1
         for multi in self.maindbusmon.get_service_list(classfilter="com.victronenergy.multi") or {}:
-            self.chargers[multi] = 1
-            self.inverters[multi] = 1
+            self.dcdevices[multi] = 1
         for multiplus in self.maindbusmon.get_service_list(classfilter="com.victronenergy.vebus") or {}:
-            self.inverters[multiplus] = 1
+            self.dcdevices[multiplus] = 1
 
-        logger.info(f"chargers: {self.chargers}")
-        logger.info(f"inverters: {self.inverters}")
-        assert(self.chargers)
-        assert(self.inverters)
+        logger.info(f"dcdevices: {self.dcdevices}")
+        assert(self.dcdevices)
 
         # Get dynamic servicename for batteries
         battServices = self.maindbusmon.get_service_list(classfilter="com.victronenergy.battery") or []
@@ -691,10 +686,13 @@ class DbusAggBatService(object):
         logger.info("--- update ---")
 
         chargerVoltages = []
-        for charger in self.chargers:
-            vc = self.maindbusmon.get_value(charger, "/Dc/0/Voltage")
-            if vc:
-                chargerVoltages.append(vc)
+        for dcdevice in self.dcdevices:
+            c = self.maindbusmon.get_value(dcdevice, "/Dc/0/Current") or 0
+            if c > 0:
+                # device is charging, get it's voltage
+                vc = max(self.maindbusmon.get_value(dcdevice, "/Dc/0/Voltage") or 0, 0)
+                if vc:
+                    chargerVoltages.append(vc)
         cvavg = sum(chargerVoltages) / len(chargerVoltages)
 
         allbulk = not (False in map(lambda b: b.inBulk(), self.batteries.values()))
@@ -752,8 +750,8 @@ class DbusAggBatService(object):
         estsoc = sum(socs) / len(self.batteries)
 
         loadcurrent = 0
-        for inverter in self.inverters:
-            loadcurrent += min(self.maindbusmon.get_value(inverter, "/Dc/0/Current"), 0)
+        for dcdevice in self.dcdevices:
+            loadcurrent += min(self.maindbusmon.get_value(dcdevice, "/Dc/0/Current") or 0, 0)
 
         self.maxccfilter.filter( 5*CGES100 + CGES2 * (1 - math.pow(estsoc/99.0, 2)) - loadcurrent)
 
@@ -805,7 +803,7 @@ class DbusAggBatService(object):
         if self.forceSoc:
             fakesoc = self.forceSoc
 
-        logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc}, turnOnSoc: {self.turnOnSoc}, fake-soc: {fakesoc}")
+        logger.info(f"turnOff: {turnOff}, TurnedOff: {self.turnedOff}, avg-soc: {avgsoc:.1f}%, fake-soc: {fakesoc:.1f}%, turnOnSoc: {self.turnOnSoc:.1f}%")
         self._dbusservice[ "/Soc" ] = fakesoc
         return True
 
