@@ -1,7 +1,8 @@
 
 
 
-srcdir="$(pwd)"
+rp="$(realpath -s $0)"
+srcdir="$(dirname $rp)"
 svcname="$(basename $srcdir)"
 
 prefix=""
@@ -79,7 +80,7 @@ ss=""
 ttydev="$1"
 svcsrcdir="./service"
 svcdestdir="$prefix/opt/victronenergy/service/$svcname"
-if [ -d ./service-templates ]; then
+if [ -d $srcdir/service-templates ]; then
     svcsrcdir="./service-templates"
     svcdestdir="$prefix/opt/victronenergy/service-templates/$svcname"
     ss="1"
@@ -90,6 +91,8 @@ if [ -d ./service-templates ]; then
 fi
 
 if [ "$cmd" = "install" ]; then
+
+    cd $srcdir
 
     if [ ! -f setup/filelist ]; then
         echo "setup/filelist not found, exiting."
