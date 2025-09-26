@@ -4,9 +4,12 @@
 DRIVER_VERSION = 0.12
 DRIVER_SUBVERSION = 'b3'
 
+# Battery capacity (amps) if the BMS does not support reading it 
+BATTERY_CAPACITY = 50
+
 # battery Current limits
-MAX_BATTERY_CURRENT = 50.0
-MAX_BATTERY_DISCHARGE_CURRENT = 60.0
+MAX_BATTERY_CURRENT = BATTERY_CAPACITY/2
+MAX_BATTERY_DISCHARGE_CURRENT = BATTERY_CAPACITY*0.75
 
 # Some daly bms have a very unsteady current measurement, enable
 # this to average the current values from bms.
@@ -25,9 +28,6 @@ MAX_CELL_VOLTAGE = 3.45                       # CVCM_ENABLE max charging voltage
 RECONNECTCELLVOLTAGE = 3.3 # 52.8v
 BALANCETIME = 120 # [s]
 
-# Daly settings
-# Battery capacity (amps) if the BMS does not support reading it 
-BATTERY_CAPACITY = 50
 # Invert Battery Current. Default non-inverted. Set to -1 to invert
 INVERT_CURRENT_MEASUREMENT = -1
 
