@@ -7,6 +7,9 @@ tmp
 .*~
 __pycache__
 all.py
+*.log
+
+config_local.py
 
 # Prerequisites
 *.d
@@ -40,4 +43,3 @@ all.py
 *.exe
 *.out
 *.app
-setup.log
