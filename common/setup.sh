@@ -17,7 +17,7 @@ echo "svcname: $svcname"
 echo
 
 if [ -z "$1" ]; then
-    echo "usage: $(basename $0) (install, remove) [ttydev]"
+    echo "usage: $(basename $0) (install, remove, installall) [ttydev]"
     echo "error no cmd (install, remove) given, exiting."
     exit 1
 fi
@@ -80,19 +80,19 @@ ss=""
 ttydev="$1"
 svcsrcdir="./service"
 svcdestdir="$prefix/opt/victronenergy/service/$svcname"
-if [ -d $srcdir/service-templates ]; then
-    svcsrcdir="./service-templates"
-    svcdestdir="$prefix/opt/victronenergy/service-templates/$svcname"
-    ss="1"
-    if [ -z "$ttydev" ]; then
-        echo "!!! Warning: This is a serial-starter service, but no ttydev given, runtime !!!"
-        echo "!!! service files will not be installed! !!!"
-    fi
-fi
-
 if [ "$cmd" = "install" ]; then
 
     cd $srcdir
+
+    if [ -d service-templates ]; then
+        svcsrcdir="./service-templates"
+        svcdestdir="$prefix/opt/victronenergy/service-templates/$svcname"
+        ss="1"
+        if [ -z "$ttydev" ]; then
+            echo "!!! Warning: This is a serial-starter service, but no ttydev given, runtime !!!"
+            echo "!!! service files will not be installed! !!!"
+        fi
+    fi
 
     if [ ! -f setup/filelist ]; then
         echo "setup/filelist not found, exiting."
@@ -151,6 +151,12 @@ if [ "$cmd" = "install" ]; then
         ln -s $dstdir $dstdir2
       fi
     fi
+elif [ "$cmd" = "installall" ]; then
+    dn="$(dirname $srcdir)"
+    for service in $(cat /data/conf/installed-ibr-services); do
+        echo "calling $dn/$service/setup.sh install"
+        $dn/$service/setup.sh install
+    done
 else
     echo "Error, cmd $cmd not implemented."
 fi
