@@ -15,8 +15,8 @@ class Daly(Battery):
         self.command_address = address
         self.cell_min_voltage = None
         self.cell_max_voltage = None
-        self.cell_min_no = None
-        self.cell_max_no = None
+        # self.cell_min_no = None
+        # self.cell_max_no = None
         self.poll_interval = 2000
         self.poll_step = 0
         self.type = "Daly"
@@ -335,10 +335,11 @@ class Daly(Battery):
             logger.warning("read_cell_voltage_range_data(): error serial read")
             return False
 
-        cell_max_voltage,self.cell_max_no,cell_min_voltage, self.cell_min_no = unpack_from('>hbhb', minmax_data)
+        # cell_max_voltage,self.cell_max_no,cell_min_voltage, self.cell_min_no = unpack_from('>hbhb', minmax_data)
+        cell_max_voltage, _,cell_min_voltage,  _ = unpack_from('>hbhb', minmax_data)
         # Daly cells numbers are 1 based and not 0 based
-        self.cell_min_no -= 1
-        self.cell_max_no -= 1
+        # self.cell_min_no -= 1
+        # self.cell_max_no -= 1
         # Voltage is returned in mV
         self.cell_max_voltage = cell_max_voltage / 1000
         self.cell_min_voltage = cell_min_voltage / 1000
