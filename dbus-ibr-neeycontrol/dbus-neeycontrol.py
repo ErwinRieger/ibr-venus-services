@@ -44,7 +44,12 @@ class NeeyControl(object):
         super(NeeyControl, self).__init__()
 
         dummy = {"code": None, "whenToLog": "configChange", "accessLevel": None}
-        self.dbusmon = DbusMonitor({ "com.victronenergy.battery" : { "/Ess/Balancing": dummy } },
+        # self.dbusmon = DbusMonitor({ "com.victronenergy.battery" : { "/Ess/Balancing": dummy } },
+         #        valueChangedCallback=self.balancing_changed_wrapper)
+        self.dbusmon = DbusMonitor({ 
+                "com.victronenergy.system" : { "/ActiveBmsService": dummy },
+                "com.victronenergy.battery" : { "/Ess/Balancing": dummy },
+                },
                 valueChangedCallback=self.value_changed_wrapper)
 
         self._dbusservice = VeDbusService(servicename)
@@ -85,13 +90,22 @@ class NeeyControl(object):
         # GLib.idle_add(self.idlefunc)
         GLib.idle_add(self.idlefuncWrapper)
 
+        # Get dynamic servicename for selected BMS
+        self.activebms = self.dbusmon.get_value("com.victronenergy.system", "/ActiveBmsService")
+        if not self.activebms:
+            logging.info(f"no initial BMS found (com.victronenergy.system:/ActiveBmsService)")
+            sys.exit(1)
+
+        logging.info(f"found initial BMS: {self.activebms}")
+        # self.dbusmon = DbusMonitor({ self.activebms : { "/Ess/Balancing": dummy } },
+                # valueChangedCallback=self.balancing_changed_wrapper)
+
         # Get dynamic servicename for batteries
-        battServices = self.dbusmon.get_service_list(classfilter="com.victronenergy.battery") or {}
+        # battServices = self.dbusmon.get_service_list(classfilter="com.victronenergy.battery") or {}
+        # logging.info(f"found initial batt: {battServices}")
+        # assert("com.victronenergy.battery.aggregate" in battServices)
 
-        logging.info(f"found initial batt: {battServices}")
-        assert("com.victronenergy.battery.aggregate" in battServices)
-
-        balstate = self.dbusmon.get_value("com.victronenergy.battery.aggregate", "/Ess/Balancing") or []
+        balstate = self.dbusmon.get_value(self.activebms, "/Ess/Balancing") or []
         self.stateChanged(balstate)
 
         GLib.timeout_add(10000, self.updateWrapper)
@@ -116,13 +130,16 @@ class NeeyControl(object):
 
     # #############################################################################################################
 
-    # Calls value_changed with exception handling
+    # Calls balancing_changed with exception handling
     def value_changed_wrapper(self, *args, **kwargs):
         exit_on_error(self.value_changed, *args, **kwargs)
 
     def value_changed(self, service, path, options, changes, deviceInstance):
-
-        if service == "com.victronenergy.battery.aggregate":
+        if service == "com.victronenergy.battery.system":
+            value = changes["Value"]
+            logging.info(f'bms_changed: {value}')
+            self.activebms = value
+        elif service == self.activebms:
             value = changes["Value"]
             self.stateChanged(value or [])
 
