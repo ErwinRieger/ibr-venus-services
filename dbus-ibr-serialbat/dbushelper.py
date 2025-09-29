@@ -20,12 +20,13 @@ class DbusHelper:
 
     def __init__(self, battery):
         self.battery = battery
-	# +10 to be above virtual aggregate BMS's for
-	# automatatic DVCC and Battery Monitor detection
+        # +10 to be above virtual aggregate BMS's for
+        # automatatic DVCC and Battery Monitor detection
         self.instance = int(self.battery.port[-1]) + 15
         self.settings = None
         devport = self.battery.port[self.battery.port.rfind('/') + 1:]
         self._dbusservice = VeDbusService(f"com.victronenergy.{SERVICENAME}.{devport}", get_bus())
+        self.error_count = 0
 
     def setup_instance(self):
         # bms_id = self.battery.production if self.battery.production is not None else \
@@ -151,15 +152,15 @@ class DbusHelper:
         # This is called every battery.poll_interval milli second as set up per battery type to read and update the data
         # logger.info("*** PUBLISH_BATTERY ***\n")
         try:
-            error_count = 0
             # Call the battery's refresh_data function
             success = self.battery.refresh_data()
             if success:
-                error_count = 0
+                self.error_count = 0
             else:
-                error_count += 1
+                self.error_count += 1
+                logger.info(f"publish_battery: errorcount = {self.error_count}")
                 # If the battery is offline for more than 10 polls (polled every second for most batteries)
-                if error_count >= 10: 
+                if self.error_count >= 10: 
                     logger.warning("publish_battery: to many comm. errors, restarting...")
                     loop.quit()
                     return False
