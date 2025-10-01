@@ -127,8 +127,7 @@ class Battery(object):
         self.max_battery_discharge_current = C50 # initial value
         
         # charging/balancing
-        self.balancing = []
-        self.throttling = None
+        self.throttling = None # xxx remove
 
     def test_connection(self):
         # Each driver must override this function to test if a connection can be made
@@ -179,9 +178,6 @@ class Battery(object):
             except ValueError:
                 pass
         return max_voltage
-
-    def get_balancing(self):
-        return self.balancing
 
     def get_temp(self):
         return sum(self.temperatures) / len(self.temperatures)
