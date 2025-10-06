@@ -1,0 +1,17 @@
+--- /opt/victronenergy/dbus-systemcalc-py/dbus_systemcalc.py
++++ /opt/victronenergy/dbus-systemcalc-py/dbus_systemcalc.py
+@@ -849,6 +849,14 @@
+ 
+ 		# ===== AC IN SOURCE =====
+ 		multi_path = getattr(delegates.Multi.instance.multi, 'service', None)
++		if multi_path is not None:
++			multi_mode = self._dbusmonitor.get_value(multi_path, '/Mode')
++			if multi_mode == 4:
++				# XXX don't use values from a turned-off multiplus
++				# logger.info(f"multi_path hack : {multi_path}, mode: {multi_mode}")
++				multi_path = None
++
++
+ 		ac_in_source = None
+ 		active_input = None
+ 		if multi_path is None:
