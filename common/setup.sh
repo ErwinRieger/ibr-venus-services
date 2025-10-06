@@ -99,6 +99,15 @@ if [ "$cmd" = "install" ]; then
         exit 1
     fi
 
+    patches="$(ls setup/*.patch 2>/dev/null)"
+    if [ -n "$patches" ]; then
+        echo ""
+        echo "*** Apply patch(es) ***"
+        for pf in $patches; do
+            patch -N -p0  < $pf
+        done    
+    fi
+
     dstdir="$prefix/opt/victronenergy/$svcname"
     echo ""
     echo "*** Install application files to $dstdir ***"
