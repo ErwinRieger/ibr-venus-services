@@ -125,6 +125,7 @@ class IbrRsHackService(AioDbusService):
         self.power = 0
         self.ts = 0
         self.energy = 0
+        self.lastEnergy = 0
 
     def itemsChanged(self, values):
 
@@ -145,9 +146,14 @@ class IbrRsHackService(AioDbusService):
             if self.output and self.ts:
                 dt = now - self.ts
                 self.energy += (self.power*dt)/3600000.0
-                logger.debug(f"energy: {self.power}, dt: {dt}, {self.energy}")
-                with self as service:
-                    service["/Energy/InverterToAcOut"] = self.energy
+                # logger.debug(f"energy: {self.power}, dt: {dt}, {self.energy}")
+                e = round(self.energy, 3)
+                if e != self.lastEnergy:
+                    with self as service:
+                        logger.debug(f"energy: {e}")
+                        # service["/Energy/InverterToAcOut"] = self.energy
+                        service["/Energy/InverterToAcOut"] = e
+                    self.lastEnergy = e
 
             self.power = power
             self.ts = now
