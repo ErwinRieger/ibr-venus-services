@@ -114,7 +114,7 @@ class IbrRsHackService(AioDbusService):
         self.add_item(IntegerItem('/Ac/In/1/Type', 0))
         self.add_item(DoubleItem('/Yield/User', 0))
 
-        # flag, output load and energy consumption if
+        # Flag, output energy consumption if
         # multiplus is off
         self.output = False
         self.power = 0
