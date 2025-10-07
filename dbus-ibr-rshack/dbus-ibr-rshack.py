@@ -127,8 +127,8 @@ class IbrRsHackService(AioDbusService):
         if "/Mode" in values:
             mode = values["/Mode"]
             if mode == MULTIOFFMODE:
-                logger.debug(f"itemsChanged(): multi turned off")
                 if not self.output:
+                    logger.debug(f"itemsChanged(): multi turned off")
                     self.output = True
                     self.ts = 0
             else:
