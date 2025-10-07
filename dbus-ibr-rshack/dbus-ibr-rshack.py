@@ -22,7 +22,6 @@ sys.path.insert(1, '/data/ibr-venus-services/common/python')
 from aiovelib.service import Service as AioDbusService
 from aiovelib.service import IntegerItem, TextItem, DoubleItem
 from aiovelib.client import Monitor, Service as AioDbusClient, ServiceHandler
-from aiovelib.localsettings import SettingsService as SettingsClient, Setting
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -68,14 +67,11 @@ class SystemMonitor(Monitor):
 
     async def serviceAdded(self, service):
 
-        if service.name == "com.victronenergy.inverter.rshack":
-            return
-
-        logger.debug(f"service added: {service.name}")
-
         # We have to wait for some paths to become valid before
         # we can really place or sync things.
-        logger.debug("Waiting for essential paths, service: "+service.name)
+
+        logger.debug(f"service added: {service.name}, waiting for essential paths...")
+
         values = await service.wait_for_essential_paths()
         logger.debug(f"initial values: {values}")
 
@@ -83,22 +79,19 @@ class SystemMonitor(Monitor):
 
     async def serviceRemoved(self, service):
 
-        if service.name == "com.victronenergy.inverter.rshack":
-            return
-
         logger.debug("serviceRemoved(): "+service.name)
-        if service.name.startswith("com.victronenergy.inverter."):
-            self.inverterService.itemsChanged({"/Ac/L1/P": 0})
+
+        if service.name.startswith("com.victronenergy.inverter"):
+            self.itemsChanged({"/Ac/L1/P": 0})
 
     async def systemInstanceChanged(self, service):
+        
         logger.debug("systemInstanceChanged(): "+service.name)
+        
         await self.serviceRemoved(service)
         await self.serviceAdded(service)
 
     def itemsChanged(self, service, values):
-
-        if service.name == "com.victronenergy.inverter.rshack":
-            return
 
         # logger.debug(f"items changed, service: {service.name}, values: {values}")
         self.inverterService.itemsChanged(values)
@@ -106,7 +99,7 @@ class SystemMonitor(Monitor):
 class IbrRsHackService(AioDbusService):
 
     def __init__(self, bus):
-        super().__init__(bus, name="com.victronenergy.inverter.rshack")
+        super().__init__(bus, name="com.victronenergy.multi.rshack")
 
         # Compulsory paths
         self.add_item(IntegerItem("/ProductId", 1))
@@ -118,6 +111,8 @@ class IbrRsHackService(AioDbusService):
         self.add_item(IntegerItem("/Connected", 1))
 
         self.add_item(DoubleItem("/Energy/InverterToAcOut", 0))
+        self.add_item(IntegerItem('/Ac/In/1/Type', 0))
+        self.add_item(DoubleItem('/Yield/User', 0))
 
         # flag, output load and energy consumption if
         # multiplus is off
@@ -132,10 +127,12 @@ class IbrRsHackService(AioDbusService):
         if "/Mode" in values:
             mode = values["/Mode"]
             if mode == MULTIOFFMODE:
+                logger.debug(f"itemsChanged(): multi turned off")
                 if not self.output:
                     self.output = True
                     self.ts = 0
             else:
+                logger.debug(f"itemsChanged(): multi turned on")
                 self.output = False
 
         if POWERPATH in values:
@@ -150,8 +147,6 @@ class IbrRsHackService(AioDbusService):
                 e = round(self.energy, 3)
                 if e != self.lastEnergy:
                     with self as service:
-                        logger.debug(f"energy: {e}")
-                        # service["/Energy/InverterToAcOut"] = self.energy
                         service["/Energy/InverterToAcOut"] = e
                     self.lastEnergy = e
 
