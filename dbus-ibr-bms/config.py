@@ -5,6 +5,8 @@ NUMBER_OF_BATTERIES = 1
 # Battery capacity [Ah]
 BATTERY_CAPACITY = 100
 
+MAXCHARGECURRENT = BATTERY_CAPACITY * NUMBER_OF_BATTERIES * 0.5
+
 # Time to wait after cells are balanced to
 # enter floating state 
 BALANCETIME = 5 * 60 # [s]

@@ -69,8 +69,8 @@ C100 = max(BATTERY_CAPACITY/100, 1)
 C2 = BATTERY_CAPACITY/2
 
 CGES = BATTERY_CAPACITY * NUMBER_OF_BATTERIES
-CGES100 = max(CGES/100, 1)
-CGES2 = CGES/2
+CGES10 = max(CGES/10, 1)
+CGES20 = max(CGES/20, 1)
 
 # Cell voltages
 # cellfloat = 3.370
@@ -619,7 +619,7 @@ class DbusAggBatService(object):
         self._dbusservice.add_path('/Info/MaxChargeVoltage', self.chargevoltage, writeable=True, gettextcallback=lambda p, v: "{:2.2f}V".format(v))
 
         self.lastchargevoltage = None
-        self.maxccfilter = expfilter(10*CGES100, 0.25)
+        self.maxccfilter = expfilter(CGES10, 0.25)
 
         self.lastmaxcc = None
         self._dbusservice.add_path('/Info/MaxChargeCurrent', 0, writeable=True, gettextcallback=lambda p, v: "{:2.2f}A".format(v))
@@ -759,7 +759,8 @@ class DbusAggBatService(object):
         for inverter in self.inverters:
             loadcurrent += min(self.maindbusmon.get_value(inverter, "/Dc/0/Current") or 0, 0)
 
-        self.maxccfilter.filter( 5*CGES100 + CGES2 * (1 - math.pow(estsoc/99.0, 2)) - loadcurrent)
+        self.maxccfilter.filter( CGES20 + MAXCHARGECURRENT * (1 - math.pow(estsoc/99.0, 2)) - loadcurrent)
+        new: self.maxccfilter.filter( min(MAXCHARGECURRENT, CGES20 + MAXCHARGECURRENT * (1 - math.pow(estsoc/99.0, 2)) - loadcurrent) )
 
         chargevoltages = map(lambda b: b.chargevoltage, self.batteries.values())
         self.chargevoltage = min(chargevoltages)
