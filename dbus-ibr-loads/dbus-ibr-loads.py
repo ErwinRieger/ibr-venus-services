@@ -174,9 +174,7 @@ class ESS(object):
 
         if (self.logtime % 10) == 0:
             logging.info(f"***")
-            logging.info(f"pbatt: {pbatt:.0f}, pbatt avg: {self.pbatt:.0f}, pdest: {pdest:.0f}")
-            logging.info(f"p_avail {e:.0f} = pvavg {self.pvavg:.0f} - powerconsumption {powerconsumption:.0f} - pbattchg {pbattchg:.0f}")
-            logging.info(f"th: {th}, state: {chgmode}, p_avail/e: {e:.0f}, yP: {yp:.2f}, yI: {yi:.2f}, out: {out}, ysum: {self.ysum} ({ymaxneg}..{ymaxpos})")
+            logging.info(f"th: {th}, e: {e:.0f}, P: {yp:.1f}, ysum: {self.ysum} ({ymaxneg}..{ymaxpos}), I: {yi:.1f}, out {out:.1f}")
         self.logtime += 1
 
         self.loadSwitch.publish(f"{out}") # xxx errorhandling
