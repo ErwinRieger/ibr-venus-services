@@ -173,7 +173,6 @@ class ESS(object):
         out = round( max(0, y) )
 
         if (self.logtime % 10) == 0:
-            logging.info(f"***")
             logging.info(f"th: {th}, e: {e:.0f}, P: {yp:.1f}, ysum: {self.ysum} ({ymaxneg}..{ymaxpos}), I: {yi:.1f}, out {out:.1f}")
         self.logtime += 1
 
