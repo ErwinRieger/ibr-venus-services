@@ -17,7 +17,7 @@ class MqttSwitch:
         self.connected = False
 
         # xxx base
-        self.client = mqtt_client.Client(clientId)
+        self.client = mqtt_client.Client(client_id=clientId, callback_api_version=mqtt_client.CallbackAPIVersion.VERSION2)
         # client.username_pw_set(username, password)
         self.client.on_connect = self.on_connect
         self.client.connect(broker, port)
@@ -28,7 +28,7 @@ class MqttSwitch:
         self.nextUpdate = time.time()
 
     # xxx base
-    def on_connect(self, client, userdata, flags, rc):
+    def on_connect(self, client, userdata, flags, rc, properties):
         if rc == 0:
             logging.info("Connected to MQTT Broker!")
             self.connected = True
