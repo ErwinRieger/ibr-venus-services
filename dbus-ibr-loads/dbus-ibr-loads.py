@@ -49,13 +49,16 @@ class ESS(object):
                     '/Ac/Consumption/L1/Power': dummy,
                     '/Ac/Consumption/L2/Power': dummy,
                     '/Ac/Consumption/L3/Power': dummy,
-                    '/Ac/ActiveIn/Source': dummy
+                    },
+                'com.victronenergy.ibrsystem': { 
+                    '/MppOperationMode': dummy,
                     },
                 'com.victronenergy.battery': { '/Ess/Throttling': dummy, '/Ess/Prequest': dummy, '/Ess/Chgmode': dummy }
                 }
 
-        self._dbusmonitor = DbusMonitor(dbus_tree, valueChangedCallback=self.value_changed_wrapper)
+        self._dbusmonitor = DbusMonitor(dbus_tree)
 
+        # xxx todo: self.activebms = self.dbusmon.get_value("com.victronenergy.system", "/ActiveBmsService")
         # com.victronenergy.battery.ttyUSB0
         battservices = self._get_connected_service_list(classfilter="com.victronenergy.battery")
         assert(len(battservices) > 0)
@@ -83,8 +86,9 @@ class ESS(object):
         self._dbusservice.add_path('/Connected', 1)
 
         self.numberOfPhases = self._dbusmonitor.get_value("com.victronenergy.system", "/Ac/Consumption/NumberOfPhases")
-        self.acsource = self._dbusmonitor.get_value("com.victronenergy.system", "/Ac/ActiveIn/Source") or 0
-        logging.info(f"initial system:/Ac/ActiveIn/Source: {self.acsource}")
+
+        m = self._dbusmonitor.get_value("com.victronenergy.ibrsystem", "/MppOperationMode")
+        logging.info(f"initial ibrsystem mpmode: {m}")
 
         self.loadSwitch = libmqtt.MqttSwitch("DynamicLoadSwitch", "cmnd/tasmota_exess_power/Dimmer", rate=1)
         self.loadSwitch.publish("0") # xxx errorhandling
@@ -103,62 +107,51 @@ class ESS(object):
 
     def update(self):
 
-        #
-        # Do not run the load when input is connected to mains, in this case we have
-        # not enough solar power to run the load.
-        #
-        # acsource is 240 if ac input is not connected, 0 (and or 1?) when input switch is closed
-        if self.acsource != 240:
-
-            if (self.logtime % 10) == 0:
-                logging.info(f"***")
-                logging.info(f"Load off, AC IN is connected.")
-            self.logtime += 1
-
-            self.loadSwitch.publish("0") # xxx errorhandling
-            return True
-
-        chgmode = self._dbusmonitor.get_value(self.battserviceName, "/Ess/Chgmode")
-        th = self._dbusmonitor.get_value(self.battserviceName, "/Ess/Throttling")
+        # chgmode = self._dbusmonitor.get_value(self.battserviceName, "/Ess/Chgmode")
+        th = self._dbusmonitor.get_value("com.victronenergy.ibrsystem", "/MppOperationMode")
 
         # Self-consumption
-        powerconsumption = 0
-        for i in range(self.numberOfPhases):
-            powerconsumption += self._dbusmonitor.get_value("com.victronenergy.system", f"/Ac/Consumption/L{i+1}/Power")
+        # powerconsumption = 0
+        # for i in range(self.numberOfPhases):
+            # powerconsumption += self._dbusmonitor.get_value("com.victronenergy.system", f"/Ac/Consumption/L{i+1}/Power") or 0
 
-        ppv = self._dbusmonitor.get_value("com.victronenergy.system", "/Dc/Pv/Power") # - pself
+        # ppv = self._dbusmonitor.get_value("com.victronenergy.system", "/Dc/Pv/Power") # - pself
+        # if ppv > self.pvavg:
+            # self.pvavg = calculate_rtt(self.pvavg, ppv, scale=0.25)
+        # else:
+            # self.pvavg = calculate_rtt(self.pvavg, ppv, scale=0.025)
 
-        if ppv > self.pvavg:
-            self.pvavg = calculate_rtt(self.pvavg, ppv, scale=0.25)
-        else:
-            self.pvavg = calculate_rtt(self.pvavg, ppv, scale=0.025)
+        # pbatt = self._dbusmonitor.get_value("com.victronenergy.system", "/Dc/Battery/Power") or 0
 
-        pbatt = self._dbusmonitor.get_value("com.victronenergy.system", "/Dc/Battery/Power") or 0
+        # pdest = 0
+        # self.pbatt = calculate_rtt(self.pbatt, pbatt, scale=0.01)
 
-        pdest = 0
-        self.pbatt = calculate_rtt(self.pbatt, pbatt, scale=0.01)
+        # if True: # not th:
+            # if chgmode == 0 or chgmode == "bulk": # bulk
+                # pdest = 0.75*self.pvavg
+            # elif chgmode == 1 or chgmode == "balancing": # balance
+# 
+                # if self.pbatt > 0:
+                    # pdest = 50
+                # else:
+                    # pdest = self.pbatt * -1 + 50
+            # elif chgmode == 2: # sink
+                # pass
+            # else: # 3 float "floating"
+                # if self.pbatt > 0:
+                    # pdest = 30
+                # else:
+                    # pdest = self.pbatt * -1 + 30
 
-        if True: # not th:
-            if chgmode == 0 or chgmode == "bulk": # bulk
-                pdest = 0.75*self.pvavg
-            elif chgmode == 1 or chgmode == "balancing": # balance
+        # pbattchg = pdest # int(self.pbatt)
 
-                if self.pbatt > 0:
-                    pdest = 50
-                else:
-                    pdest = self.pbatt * -1 + 50
-            elif chgmode == 2: # sink
-                pass
-            else: # 3 float "floating"
-                if self.pbatt > 0:
-                    pdest = 30
-                else:
-                    pdest = self.pbatt * -1 + 30
+        # # p_avail = self.pvavg - powerconsumption - pbattchg
+        # e = self.pvavg - powerconsumption - pbattchg
 
-        pbattchg = pdest # int(self.pbatt)
-
-        # p_avail = self.pvavg - powerconsumption - pbattchg
-        e = self.pvavg - powerconsumption - pbattchg
+        e = -100
+        if th == 1: # limiting
+            self.ysum = max(self.ysum, 50 / self.Ki)
+            e = 25
 
         maxout = 100
 
@@ -192,19 +185,6 @@ class ESS(object):
     def _get_connected_service_list(self, classfilter=None):
         services = self._dbusmonitor.get_service_list(classfilter=classfilter)
         return services
-
-    # Calls value_changed with exception handling
-    def value_changed_wrapper(self, *args, **kwargs):
-        exit_on_error(self.value_changed, *args, **kwargs)
-
-    # /Ac/ActiveIn/Source
-    def value_changed(self, service, path, options, changes, deviceInstance):
-        # logging.info('value_changed %s %s %s' % (service, path, str(changes)))
-
-        if path == "/Ac/ActiveIn/Source":
-
-            self.acsource = changes["Value"] or 0
-            logging.info(f"update acsource: {self.acsource}")
 
 # === All code below is to simply run it from the commandline for debugging purposes ===
 
