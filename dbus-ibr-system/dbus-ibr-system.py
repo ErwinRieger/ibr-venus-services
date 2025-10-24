@@ -50,7 +50,7 @@ class SystemMonitor(Monitor):
 
         # Solar chargers, Inverter multi rs
         chargerType = type("ChargerClient", (AioDbusClient, ClientBase),
-                     { "paths": { "/Yield/User" } })
+                     { "paths": { "/Yield/User", "/MppOperationMode" } })
         # Inverter RS and Mulitiplus 2
         loadType = type("LoadClient", (AioDbusClient, ClientBase),
                      { "paths": { "/Dc/0/Current" } })
@@ -65,6 +65,7 @@ class SystemMonitor(Monitor):
         self.system_service = system_service
         self.yields = { } # total pv load
         self.currents = { } # load current from invertes
+        self.mpptmodes = { } # mppt state from chargers
         self.settings = None
 
         self.settingsCalled = asyncio.Future()
@@ -115,16 +116,45 @@ class SystemMonitor(Monitor):
             self.yields[service.name] = pvyield
             self.system_service.publishPVYield(self.pvyield)
 
-        elif "/Dc/0/Current" in values:
+        if "/Dc/0/Current" in values:
             cur = values["/Dc/0/Current"]
             if cur: # value is [] for multiplus2, if turned off
                 self.currents[service.name] = cur
-                self.system_service.publishBattLoad(sum(self.currents.values()))
+            else:
+                self.currents[service.name] = 0
+            self.system_service.publishBattLoad(sum(self.currents.values()))
 
-        elif "/Settings/IbrSystem/GridEnergyPrice" in values:
+        if "/Settings/IbrSystem/GridEnergyPrice" in values:
             ep = values["/Settings/IbrSystem/GridEnergyPrice"]
             self.system_service.gridEnergyPrice = ep
             self.system_service.publishPVYield(self.pvyield)
+
+        if "/MppOperationMode" in values:
+            m = values["/MppOperationMode"]
+            self.mpptmodes[service.name] = m
+
+            # /MppOperationMode "1 = Voltage or Current limited, 2 = MPPT Tracker active"
+            # state=1 (limited) if all of the chargers are limited
+            # state=0 (off) if all of the chargers are off
+            # else: 2
+            off = True
+            limit = True
+            for m in self.mpptmodes.values():
+                logger.debug(f"mppt mode: {m}")
+                if m > 0:
+                    off = False
+                if m != 1:
+                    limit = False
+
+            if off:
+                self.system_service.publishMpptMode(0)
+                return
+
+            if limit:
+                self.system_service.publishMpptMode(1)
+                return
+
+            self.system_service.publishMpptMode(2)
 
 class IbrSystemService(AioDbusService):
 
@@ -132,9 +162,9 @@ class IbrSystemService(AioDbusService):
         super().__init__(bus, name="com.victronenergy.ibrsystem")
 
         # Compulsory paths
+        self.add_item(IntegerItem("/DeviceInstance", 0))
         self.add_item(IntegerItem("/ProductId", 1))
         self.add_item(TextItem("/ProductName", "ibrsystem"))
-        self.add_item(IntegerItem("/DeviceInstance", 1))
         self.add_item(TextItem("/Mgmt/ProcessName", __file__))
         self.add_item(TextItem("/Mgmt/ProcessVersion", "0.1"))
         self.add_item(TextItem("/Mgmt/Connection", "local"))
@@ -143,6 +173,9 @@ class IbrSystemService(AioDbusService):
         self.add_item(DoubleItem("/BattLoad", None))
         self.add_item(DoubleItem("/TotalPVYield", None))
         self.add_item(DoubleItem("/TotalPVEarnings", None))
+
+        # /MppOperationMode "1 = Voltage or Current limited, 2 = MPPT Tracker active"
+        self.add_item(IntegerItem("/MppOperationMode", 0))
 
     @property
     def gridEnergyPrice(self):
@@ -163,6 +196,11 @@ class IbrSystemService(AioDbusService):
         # logger.debug(f"publish load: {load}")
         with self as s:
             s['/BattLoad'] = load
+
+    def publishMpptMode(self, mode):
+        logger.debug(f"publish mppt mode: {mode}")
+        with self as s:
+            s['/MppOperationMode'] = mode
 
 async def amain(bus_type):
 
