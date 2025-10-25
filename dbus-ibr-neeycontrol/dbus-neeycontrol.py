@@ -97,13 +97,6 @@ class NeeyControl(object):
             sys.exit(1)
 
         logging.info(f"found initial BMS: {self.activebms}")
-        # self.dbusmon = DbusMonitor({ self.activebms : { "/Ess/Balancing": dummy } },
-                # valueChangedCallback=self.balancing_changed_wrapper)
-
-        # Get dynamic servicename for batteries
-        # battServices = self.dbusmon.get_service_list(classfilter="com.victronenergy.battery") or {}
-        # logging.info(f"found initial batt: {battServices}")
-        # assert("com.victronenergy.battery.aggregate" in battServices)
 
         balstate = self.dbusmon.get_value(self.activebms, "/Ess/Balancing") or []
         self.stateChanged(balstate)
