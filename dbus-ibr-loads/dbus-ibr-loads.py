@@ -53,22 +53,11 @@ class ESS(object):
                 'com.victronenergy.ibrsystem': { 
                     '/MppOperationMode': dummy,
                     },
-                'com.victronenergy.battery': { '/Ess/Throttling': dummy, '/Ess/Prequest': dummy, '/Ess/Chgmode': dummy }
                 }
 
         self._dbusmonitor = DbusMonitor(dbus_tree)
 
-        # xxx todo: self.activebms = self.dbusmon.get_value("com.victronenergy.system", "/ActiveBmsService")
-        # com.victronenergy.battery.ttyUSB0
-        battservices = self._get_connected_service_list(classfilter="com.victronenergy.battery")
-        assert(len(battservices) > 0)
 
-        for b in battservices:
-            if b.endswith(".aggregate"):
-                break
-
-        self.battserviceName = b
-        logging.info(f"using batteryservice: {b}")
 
         self._dbusservice = VeDbusService(servicename)
 
