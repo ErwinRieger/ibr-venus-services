@@ -17,7 +17,7 @@ Some victron dbus services i use to run my victron installations.
   a "balance-when-charged" charging/balancing.
 * dbus-ibr-shelly-rsmulti: This service implements a "Zero-Export" ESS using a RS-Multi
   together with a Shelly 3EM pro smartmeter.
-* dbus-ibr-loads: Control a kettle/boiler to use excess PV-power.
+* dbus-ibr-loads: Control a kettle/boiler to use excess PV-power (using mqtt).
 * dbus-ibr-rshack: Workaround to fix display loads and power consumption of my
   somewhat unusual setup.
 
