@@ -27,7 +27,8 @@ from vedbus import VeDbusService
 from dbusmonitor import DbusMonitor
 from ve_utils import exit_on_error
 
-sys.path.append(os.path.join("/data/conf"))
+sys.path.append("/data/conf")
+sys.path.append("/data/var/lib")
 from map_serialdev_to_id import *
 from  map_id_to_btmac import *
 
