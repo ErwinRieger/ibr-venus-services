@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mapfile="/data/db/map_serialdev_to_id.py"
+mapfile="/data/conf/map_serialdev_to_id.py"
 echo "# Map serial devices to their udev ID_SERIAL_SHORT" > $mapfile
 echo "SerialToId = {" >> $mapfile
 
