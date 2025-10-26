@@ -148,6 +148,9 @@ class Battery(object):
         # return false when fail, true if successful
         return False
 
+    def set_soc(self, soc):
+        self.soc = round(soc, 2)
+
     def get_capacity_remain(self):
         if self.capacity_remain is not None:
             return self.capacity_remain

@@ -191,7 +191,7 @@ class DbusHelper:
 
         # Update SOC, DC and System items
         self._dbusservice['/System/NrOfCellsPerBattery'] = self.battery.cell_count
-        self._dbusservice['/Soc'] = round(self.battery.soc, 2)
+        self._dbusservice['/Soc'] = self.battery.soc
         self._dbusservice['/Dc/0/Voltage'] = self.battery.voltage
         self._dbusservice['/Dc/0/Current'] = self.battery.current
         self._dbusservice['/Dc/0/Power'] = self.battery.voltage * self.battery.current

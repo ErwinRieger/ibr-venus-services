@@ -155,7 +155,7 @@ class Felicity(Battery):
         if len(soc_data) != 2:
             logger.error(">>> INFO: soc Data size are wrong: %s", len(soc_data))
         else:
-            self.soc = unpack_from(">H", soc_data)[0]
+            self.set_soc(unpack_from(">H", soc_data)[0])
             logger.debug(">>> INFO: Battery SoC: %s", self.soc)
 
         voltage_current_data = self.read_serial_data_felicity(self.command_total_voltage_current)

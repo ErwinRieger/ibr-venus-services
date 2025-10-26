@@ -136,7 +136,7 @@ class Daly(Battery):
     
         self.voltage = (voltage / 10)
         self.current = current
-        self.soc = (soc / 10)
+        self.set_soc(soc / 10)
 
         self.capacity_remain = (self.capacity * self.soc)/100
         return True
