@@ -3,7 +3,7 @@
 import logging
 import sys
 import os
-import asyncio
+import os, asyncio
 
 from argparse import ArgumentParser
 
@@ -21,6 +21,10 @@ sys.path.insert(1, '/data/ibr-venus-services/common/python')
 
 from aiovelib.service import Service as AioDbusService
 from aiovelib.service import IntegerItem, TextItem, DoubleItem
+sys.path.append("/data/conf")
+sys.path.append("/data/var/lib")
+from map_serialdev_to_id import SerialToId
+from map_id_to_btmac import IdToBTMac
 from aiovelib.client import Monitor, Service as AioDbusClient, ServiceHandler
 from aiovelib.localsettings import SettingsService as SettingsClient, Setting
 
@@ -169,6 +173,23 @@ class IbrSystemService(AioDbusService):
         self.add_item(TextItem("/Mgmt/ProcessVersion", "0.1"))
         self.add_item(TextItem("/Mgmt/Connection", "local"))
         self.add_item(IntegerItem("/Connected", 1))
+
+        # Create a reverse map for easier lookup
+        IdToSerial = {v: k for k, v in SerialToId.items()}
+
+        for serial_id, (bt_mac, device_name) in IdToBTMac.items():
+            if serial_id in IdToSerial:
+                device_path = IdToSerial[serial_id]
+                # device_basename will be like "ttyUSB1"
+                device_basename = os.path.basename(device_path)
+                
+                # Create and publish DeviceName
+                path_name = f"/Info/{device_basename}/DeviceName"
+                self.add_item(TextItem(path_name, device_name))
+
+                # Create and publish BTMac
+                path_mac = f"/Info/{device_basename}/BTMac"
+                self.add_item(TextItem(path_mac, bt_mac))
 
         self.add_item(DoubleItem("/BattLoad", None))
         self.add_item(DoubleItem("/TotalPVYield", None))
