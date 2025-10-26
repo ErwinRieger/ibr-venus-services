@@ -215,47 +215,46 @@ class IbrEssService(AioDbusService):
 
         self.lastPower = _p
 
+        delta_isum = 0
         if _p >= self.lower_noise and _p <= self.upper_noise:
 
-            # no esum change window
+            # no isum change window
             logger.debug(f"skip update, window: {self.lower_noise:.1f} - {self.upper_noise:.1f}")
             logger.debug(f"p(e): {_p:.1f}, pavg: {self.pavg:.1f}, power: {power:.1f}, load: {_load:.1f}, loadavg: {self.loadavg:.1f}")
             self.lastUpdate = time.time()
             return
 
-        elif abs(_p) < 10: # slow esum change window
+        elif abs(_p) < 10: # slow isum change window
 
-            logger.debug(f"very slow esum update")
-            self.isum += 0.5 * self.pavg * dt
+            logger.debug(f"very slow isum update")
+            delta_isum = 0.5 * self.pavg * dt
 
-        elif abs(_p) < 15: # slow esum change window
+        elif abs(_p) < 15: # slow isum change window
 
-            logger.debug(f"slow esum update")
-            self.isum += 0.75 * self.pavg * dt
+            logger.debug(f"slow isum update")
+            delta_isum = 0.75 * self.pavg * dt
         
-        else: # normal esum change window
+        else: # normal isum change window
 
-            logger.debug(f"normal esum update")
-            self.isum += self.pavg * dt
+            logger.debug(f"normal isum update")
+            delta_isum = self.pavg * dt
 
         logger.debug(f"p(e): {_p:.1f}, pavg: {self.pavg:.1f}, power: {power:.1f}, load: {_load:.1f}, loadavg: {self.loadavg:.1f}, isum: {self.isum:.1f}")
 
         P = self.loadavg * self.Kp
-        I = self.Ki*self.isum
+        I = self.Ki*(self.isum+delta_isum)
 
         out = P + I + D
+
+        if (out >= 2500 and self.pavg > 0) or (out <= 0 and self.pavg < 0):
+            logger.debug(f"Anti-windup active. Output: {out:.1f}, Error: {self.pavg:.1f}")
+        else:
+            self.isum += delta_isum
 
         logger.debug(f"P: {P:.1f}, I: {I:.1f}, D: {D:.1f}, out: {out:.1f}")
 
         out = max(out, 0)
         out = min(out, 2500)
-
-        if out == 0:
-            self.isum = max(self.isum, - P / self.Ki)
-            logger.debug(f"clamping isum zero {self.isum}...")
-        elif out == 2500:
-            self.isum = max(self.isum, - (2500-P) / self.Ki)
-            logger.debug(f"clamping isum 2500 {self.isum}...")
 
         self.powerlimit = out
 
