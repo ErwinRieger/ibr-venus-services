@@ -8,10 +8,13 @@ sys.path.insert(1, '/data/ibr-venus-services/common/python')
 sys.path.insert(1, '/data/ibr-venus-services/common/velib_python')
 
 from vedbus import VeDbusService
+from dbusmonitor import DbusMonitor
+
 from settingsdevice import SettingsDevice
 import battery
 from config import *
 from utils import logger
+from venus_service_utils import parse_batt_info
 
 def get_bus():
     return dbus.SessionBus() if 'DBUS_SESSION_BUS_ADDRESS' in os.environ else dbus.SystemBus()
@@ -26,6 +29,15 @@ class DbusHelper:
         self.settings = None
         devport = self.battery.port[self.battery.port.rfind('/') + 1:]
         self._dbusservice = VeDbusService(f"com.victronenergy.{SERVICENAME}.{devport}", get_bus())
+
+        dummy = {'code': None, 'whenToLog': 'configChange', 'accessLevel': None}
+        dbus_tree = {
+                        'com.victronenergy.ibrsystem': {
+                            "/Info/BattInfo": dummy,
+                        },
+                    }
+        self.dbusmon = DbusMonitor(dbus_tree)
+
         self.error_count = 0
 
     def setup_instance(self):
@@ -69,10 +81,18 @@ class DbusHelper:
         # Create the mandatory objects
         self._dbusservice.add_path('/DeviceInstance', self.instance)
         self._dbusservice.add_path('/ProductId', 0x0)
-        self._dbusservice.add_path('/ProductName', f'IBR Serial Batt ({self.battery.type})')
         self._dbusservice.add_path('/FirmwareVersion', self.battery.version)
         self._dbusservice.add_path('/HardwareVersion', self.battery.hardware_version)
         self._dbusservice.add_path('/Connected', 1)
+
+        # Get devname from BattInfo
+        dev_basename = self.battery.port.split("/")[-1]
+        all_batts = parse_batt_info(self.dbusmon.get_value("com.victronenergy.ibrsystem", '/Info/BattInfo'))
+        if dev_basename in all_batts:
+            devname, _ = all_batts[dev_basename] # value is a tuple (devname, btmac)
+            self._dbusservice.add_path('/ProductName', f'IBR Serial Batt {devname} ({self.battery.type})')
+        else:
+            self._dbusservice.add_path('/ProductName', f'IBR Serial Batt ({self.battery.type})')
 
         # Create static battery info
         self._dbusservice.add_path('/Info/BatteryLowVoltage', self.battery.min_battery_voltage, writeable=True,
