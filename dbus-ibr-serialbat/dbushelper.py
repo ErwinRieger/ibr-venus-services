@@ -13,7 +13,10 @@ from dbusmonitor import DbusMonitor
 import battery
 from config import *
 from utils import logger
-from venus_service_utils import parse_batt_info, get_device_instance, get_bus
+from venus_service_utils import parse_batt_info, get_device_instance
+
+def get_bus():
+    return dbus.SessionBus() if 'DBUS_SESSION_BUS_ADDRESS' in os.environ else dbus.SystemBus()
 
 class DbusHelper:
 

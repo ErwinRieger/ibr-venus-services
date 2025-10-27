@@ -1,4 +1,3 @@
-
 import logging
 import os
 
@@ -9,11 +8,12 @@ def get_device_instance(bus, prefix, default_instance):
     Gets the device instance from DBus settings.
     e.g. /Settings/Devices/ibrserialbatt_ttyUSB0/ClassAndVrmInstance -> battery:6
     """
+
     path = '/Settings/Devices/' + prefix
     settings = {'instance': [path + '/ClassAndVrmInstance', default_instance, 0, 0]}
-    
-    settings_device = SettingsDevice(bus, settings)
-    
+
+    settings_device = SettingsDevice(bus, settings, None)
+
     devinst_str = settings_device['instance'].split(':')
     if len(devinst_str) < 2:
         logging.error(f"Could not parse device instance: {settings_device['instance']}")
