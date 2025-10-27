@@ -95,7 +95,6 @@ class Battery(object):
     def __init__(self, port, baud):
         self.port = port
         self.baud_rate = baud
-        self.role = 'battery'
         self.type = 'Generic'
         self.poll_interval = 1000 # mS # xxx overwritten in Battery subclass (Daliy)
 
