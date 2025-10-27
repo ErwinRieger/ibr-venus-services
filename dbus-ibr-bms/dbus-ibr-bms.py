@@ -501,12 +501,14 @@ class DbusAggBatService(object):
 
         self._dbusservice = VeDbusService(servicename)
 
+        devinst = get_device_instance(self._dbusservice.dbusconn, "ibrbms", 'battery:0')
+
         # Create the mandatory objects
         self._dbusservice.add_mandatory_paths(
             processname=__file__,
             processversion="0.0",
             connection="Virtual",
-            deviceinstance=1,
+            deviceinstance=devinst,
             productid=0,
             productname="IBR BMS",
             firmwareversion=VERSION,
