@@ -72,7 +72,7 @@ Die Dienste in diesem Projekt interagieren teilweise miteinander:
 
 *   **`dbus-ibr-loads`**: Hängt von `dbus-ibr-system` ab, um die Drosselung der PV-Leistung zu erkennen.
 
-*   **`dbus-ibr-neeycontrol`**: Hängt vom Balancing-Status ab, der vom `dbus-ibr-bms`-Dienst veröffentlicht wird.
+*   **`dbus-ibr-neeycontrol`**: Hängt vom Balancing-Status (veröffentlicht von `dbus-ibr-bms`) und von den Batterie-Informationen (veröffentlicht von `dbus-ibr-system`) ab.
 
 *   **Unabhängige Dienste**: `dbus-ibr-mpcontrol`, `dbus-ibr-rshack` und `dbus-ibr-shelly-rsmulti` haben keine direkten Abhängigkeiten zu anderen `dbus-ibr-*` Diensten.
 
@@ -80,7 +80,7 @@ Zusammenfassende Kette der Abhängigkeiten:
 
 ``dbus-ibr-serialbat`` -> ``dbus-ibr-bms`` -> ``dbus-ibr-neeycontrol``
 
-``dbus-ibr-system`` -> ``dbus-ibr-loads``
+``dbus-ibr-system`` -> ``dbus-ibr-loads``, ``dbus-ibr-neeycontrol``
 
 Veröffentlichte Dienste
 =======================
