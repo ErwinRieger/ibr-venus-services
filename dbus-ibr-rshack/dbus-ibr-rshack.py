@@ -27,12 +27,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 MULTIOFFMODE = 4
-POWERPATH = "/Ac/Out/L1/P"
+INVPOWERPATH = "/Ac/Out/L1/P"
 
 # Monitor RS6000
 class RSHandler(AioDbusClient, ServiceHandler):
     servicetype = "com.victronenergy.device"
-    paths = { "/Ac/Out/L1/P" }
+    paths = { INVPOWERPATH }
 
     async def wait_for_essential_paths(self):
         res = {}
@@ -82,7 +82,7 @@ class SystemMonitor(Monitor):
         logger.debug("serviceRemoved(): "+service.name)
 
         if service.name.startswith("com.victronenergy.inverter"):
-            self.itemsChanged({"/Ac/L1/P": 0})
+            self.itemsChanged({INVPOWERPATH: 0})
 
     async def systemInstanceChanged(self, service):
         
@@ -136,9 +136,9 @@ class IbrRsHackService(AioDbusService):
                 logger.debug(f"itemsChanged(): multi turned on")
                 self.output = False
 
-        if POWERPATH in values:
+        if INVPOWERPATH in values:
 
-            power = values[POWERPATH]
+            power = values[INVPOWERPATH]
             now = time.time()
 
             if self.output and self.ts:
