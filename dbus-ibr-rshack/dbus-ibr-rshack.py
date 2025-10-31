@@ -109,6 +109,7 @@ class IbrRsHackService(AioDbusService):
         self.add_item(TextItem("/Mgmt/ProcessVersion", "0.1"))
         self.add_item(TextItem("/Mgmt/Connection", "local"))
         self.add_item(IntegerItem("/Connected", 1))
+        self.add_item(TextItem("/CustomName", ""))
 
         self.add_item(DoubleItem("/Energy/InverterToAcOut", 0))
         self.add_item(IntegerItem('/Ac/In/1/Type', 0))
