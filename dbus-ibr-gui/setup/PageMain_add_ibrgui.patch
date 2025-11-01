@@ -1,4 +1,4 @@
-*** /opt_orig/victronenergy/gui/qml/PageMain.qml	2025-11-01 15:46:20.355326065 +0100
+*** /opt/victronenergy/gui/qml/PageMain.qml.orig	2025-11-01 15:46:20.355326065 +0100
 --- /opt/victronenergy/gui/qml/PageMain.qml	2025-11-01 15:45:30.286964708 +0100
 ***************
 *** 149,159 ****
