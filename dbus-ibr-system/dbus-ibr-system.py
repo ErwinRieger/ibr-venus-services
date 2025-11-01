@@ -141,24 +141,15 @@ class SystemMonitor(Monitor):
             # state=1 (limited) if all of the chargers are limited
             # state=0 (off) if all of the chargers are off
             # else: 2
-            off = True
-            limit = True
+            mpmode = 0
             for m in self.mpptmodes.values():
                 logger.debug(f"mppt mode: {m}")
-                if m > 0:
-                    off = False
-                if m != 1:
-                    limit = False
+                if m == 1:
+                    mpmode = max(mpmode, 1)
+                if m == 2:
+                    mpmode = 2
 
-            if off:
-                self.system_service.publishMpptMode(0)
-                return
-
-            if limit:
-                self.system_service.publishMpptMode(1)
-                return
-
-            self.system_service.publishMpptMode(2)
+            self.system_service.publishMpptMode(mpmode)
 
 class IbrSystemService(AioDbusService):
 
