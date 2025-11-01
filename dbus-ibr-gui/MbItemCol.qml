@@ -12,9 +12,6 @@ MbItem {
 	default property alias values: _values.data
 	property alias fontFamily: _description.font.family
 
-    property int nRows: values.length
-    property int rowheight: (height / nRows)
-
 	// The description of the values shown
 	MbTextDescription {
 		id: _description
