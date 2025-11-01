@@ -1,5 +1,5 @@
---- opt/victronenergy/gui/qml/PageMain.qml.orig	2025-11-01 16:38:36.668213844 +0100
-+++ opt/victronenergy/gui/qml/PageMain.qml	2025-11-01 16:38:45.584284924 +0100
+--- /opt/victronenergy/gui/qml/PageMain.qml.orig	2025-11-01 16:38:36.668213844 +0100
++++ /opt/victronenergy/gui/qml/PageMain.qml	2025-11-01 16:38:45.584284924 +0100
 @@ -149,11 +149,17 @@
  		PageGenset {}
  	}

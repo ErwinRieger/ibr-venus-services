@@ -176,7 +176,6 @@ MbPage {
 
 	    MbItemCol {
 		 description: qsTr("Batt")
-         nRows: nBatt+1
          height: (nBatt+1)*smallStyle.itemHeight
          VBusItem { id:cv; bind: service.path("/Info/MaxChargeVoltage") }
 		 values: [
@@ -281,7 +280,7 @@ MbPage {
 
             id: ac_row
 		    description: qsTr("AC")
-            nRows: ((rsinverterPath !== undefined ? 1:0) + (multiPath !== undefined ? 1:0))
+            property int nRows: ((rsinverterPath !== undefined ? 1:0) + (multiPath !== undefined ? 1:0))
             height: (nRows+1)*smallStyle.itemHeight
 
             VBusItem { id: multi_state; bind: multiPath+"/State" }
