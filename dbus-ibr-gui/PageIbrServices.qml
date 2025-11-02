@@ -52,7 +52,7 @@ MbPage {
                 console.log("found multi:"+ multiPath)
                 return
             }
-            if (DBusServices.at(i).type === DBusService.DBUS_SERVICE_MULTI_RS) {
+            if ((DBusServices.at(i).type === DBusService.DBUS_SERVICE_MULTI_RS) && (DBusServices.at(i).name.search("socketcan")>0)) {
                 multiPath = DBusServices.at(i).name
                 multiName = "Multi RS"
                 multiInPath = "/Ac/In/1/L1/P"
@@ -132,19 +132,19 @@ MbPage {
 		 values: [
             MbItemRow {
 		        description: qsTr("Erzeug:")
-                mbStyle: root.smallStyle
+                mbStyle: smallStyle
 			    values: [
                   MbTextBlock { 
                       item: VBusItem { value: mpptModeAsString(mpptmode.value) }
-                      mbStyle: root.smallStyle
+                      mbStyle: smallStyle
                   },
                   MbTextBlock { 
                     item: sys.pvCharger.power
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
                   },
                   MbTextBlock { 
                     item.bind: "com.victronenergy.ibrsystem/TotalPVYield";
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
                     item.decimals:3;
                     item.unit: "kWh"
                   }
@@ -152,10 +152,10 @@ MbPage {
             },
             MbItemRow {
 		        description: qsTr("Ertrag:")
-                mbStyle: root.smallStyle
+                mbStyle: smallStyle
 			    values: MbTextBlock { 
                     item.bind: "com.victronenergy.ibrsystem/TotalPVEarnings";
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
                     item.decimals:3;
                     item.unit: "Eur"
                 }
@@ -171,39 +171,39 @@ MbPage {
                   // Cv, Volt, Current, Min, Max, Soc
                   MbItemRow {
 		            description: qsTr("BMS:")
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
 			        values: [
                       MbTextBlock { 
                           item: VBusItem { value: "cv "+cv.format(2)+"V" }
-                          mbStyle: root.smallStyle
+                          mbStyle: smallStyle
                       },
                       MbTextBlock { 
                         item.bind: service.path("/Dc/0/Voltage");
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
                         item.decimals:2;
                         item.unit: "V"
                       },
                       MbTextBlock { 
                         item.bind: service.path("/Dc/0/Current");
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
                         item.decimals:1;
                         item.unit: "A"
                       },
                       MbTextBlock { 
                         item.bind: service.path("/System/MinCellVoltage");
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
                         item.decimals:3;
                         item.unit: "V"
                       },
                       MbTextBlock { 
                         item.bind: service.path("/System/MaxCellVoltage");
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
                         item.decimals:3;
                         item.unit: "V"
                       },
                       MbTextBlock { 
                         item.bind: service.path("/Soc");
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
                         item.decimals:1;
                         item.unit: "%"
                       }
@@ -213,7 +213,6 @@ MbPage {
           			model: nBatt
 
                         // Current, Min, Max, Soc
-          				// color: root.color
           				// opacity: getScaledStrength(strength.value) >= (index + 1) ? 1 : 0.2
                         MbItemRow {
                             property string battDevice: battInfo.value[index*3]
@@ -221,37 +220,37 @@ MbPage {
 	                        property string balancer:  ((balanersRunning.value !== undefined && balanersRunning.value.includes(battDevice)) ? "B on " : "B off")
 	                        property VBusItem vdiff: VBusItem { bind: battPath+"/Voltages/Diff" }
 		                    description: qsTr(battInfo.value[index*3+1])
-                            mbStyle: root.smallStyle
+                            mbStyle: smallStyle
 			                values: [
                                 MbTextBlock { 
                                     item: VBusItem { value: balancer }
-                                    mbStyle: root.smallStyle
+                                    mbStyle: smallStyle
                                 },
                                 MbTextBlock { 
                                     item: VBusItem { value: vdiff.value*1000; decimals: 0; unit: "mV" }
-                                    mbStyle: root.smallStyle
+                                    mbStyle: smallStyle
                                 },
                                 MbTextBlock { 
                                     item.bind: battPath+"/Dc/0/Current";
-                                    mbStyle: root.smallStyle
+                                    mbStyle: smallStyle
                                     item.decimals:1;
                                     item.unit: "A"
                                 },
                                 MbTextBlock { 
                                     item.bind: battPath+"/System/MinCellVoltage";
-                                    mbStyle: root.smallStyle
+                                    mbStyle: smallStyle
                                     item.decimals:3;
                                     item.unit: "v"
                                 },
                                 MbTextBlock { 
                                     item.bind: battPath+"/System/MaxCellVoltage";
-                                    mbStyle: root.smallStyle
+                                    mbStyle: smallStyle
                                     item.decimals:3;
                                     item.unit: "v"
                                 },
                                 MbTextBlock { 
                                     item.bind: battPath+"/Soc";
-                                    mbStyle: root.smallStyle
+                                    mbStyle: smallStyle
                                     item.decimals:1;
                                     item.unit: "%"
                                 }
@@ -277,64 +276,62 @@ MbPage {
 		    values: [
                 MbItemRow {
 		            description: qsTr("Load:")
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
 			        values: [
                         MbTextBlock { 
                             item: sys.acLoad.power
-                            mbStyle: root.smallStyle
+                            mbStyle: smallStyle
                         }
                     ]
                 },
                 MbItemRow {
-                    // show: (rsinverterPath === undefined ? false:true)
                     visible: (rsinverterPath === undefined ? false:true)
 		            description: qsTr("RS Inverter:")
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
 	                        // property VBusItem vdiff: VBusItem { bind: battPath+"/Voltages/Diff" }
 			        values: [
                         MbTextBlock { 
                             VBusItem { id: inv_state; bind: rsinverterPath+"/State" }
                             item: VBusItem { value: stateAsString(inv_state.value) }
-                            mbStyle: root.smallStyle
+                            mbStyle: smallStyle
                         },
                         MbTextBlock { 
                             item.bind: rsinverterPath+"/Ac/Out/L1/P";
-                            mbStyle: root.smallStyle
+                            mbStyle: smallStyle
                         }
                     ]
                 },
                 MbItemRow {
-                    // show: false // (multiPath === undefined ? false:true)
                     visible: (multiPath === undefined ? false:true)
 		            description: multiName
-                    mbStyle: root.smallStyle
+                    mbStyle: smallStyle
 			        values: [
                         MbTextBlock { 
                             item: VBusItem { value: stateAsString(multi_state.value) }
-                            mbStyle: root.smallStyle
+                            mbStyle: smallStyle
                         },
                         // MbTextBlock { 
                             // item: VBusItem { value: "CT:"+ac_row.multictpower.toString()+"W" }
-                            // mbStyle: root.smallStyle
+                            // mbStyle: smallStyle
                         // },
                         MbTextBlock { 
                             item: VBusItem { value: ac_row.multipower; unit:"W" }
-                            mbStyle: root.smallStyle
+                            mbStyle: smallStyle
                         }
                     ]
                 }
 		    ]
 	    }
 
-        // Settings/IbrSystem/GridEnergyPrice
         // property VBusItem volumeUnit: VBusItem { bind: "com.victronenergy.settings/Settings/System/VolumeUnit" }
 		MbSubMenu {
-			id: settings
-			description: qsTr("Settings")
-			show: true // hasSettings.value === 1
+			id: detailsPage
+			description: qsTr("Details")
 			subpage: Component {
 				PageIbrServicesSetup {
-					title: settings.description
+                    rootInfo: root
+					title: detailsPage.description
+                    mbStyle: smallStyle
 					bindPrefix: "com.victronenergy.settings"
 				}
 			}
