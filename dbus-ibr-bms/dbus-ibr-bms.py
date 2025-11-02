@@ -308,7 +308,7 @@ class battery(object):
 
         self.testdone = False
 
-        # self.cellCutoff = 3.0
+        self.cellCutoff = 0
         self.turnOff = False
 
     def get_value(self, path):
@@ -422,19 +422,19 @@ class battery(object):
         dynCutoffRange = MIN_CELL_VOLTAGE - dynCutoffEnd
         if self.cbatt:
             # cellCutoff = max(2.85, 3.1 + 0.25 * (min(self.cbatt, 0)/BATTERY_CAPACITY))
-            cellCutoff = bound(
+            self.cellCutoff = bound(
                     dynCutoffEnd,
                     MIN_CELL_VOLTAGE + dynCutoffRange * (self.cbatt/BATTERY_CAPACITY),
                     MIN_CELL_VOLTAGE)
         else:
-            cellCutoff = MIN_CELL_VOLTAGE
+            self.cellCutoff = MIN_CELL_VOLTAGE
 
-        if ucell_min <= cellCutoff:
+        if ucell_min <= self.cellCutoff:
             self.turnOff = True
         else:
             self.turnOff = False
 
-        logger.info(f"    minvolt: {ucell_min:.3f}V, cellcutoff: {cellCutoff:.3f}V, turnoff: {self.turnOff}")
+        logger.info(f"    minvolt: {ucell_min:.3f}V, cellcutoff: {self.cellCutoff:.3f}V, turnoff: {self.turnOff}")
 
 
 class history(object):
@@ -626,6 +626,9 @@ class DbusAggBatService(object):
         self.lastmaxcc = None
         self._dbusservice.add_path('/Info/MaxChargeCurrent', 0, writeable=True, gettextcallback=lambda p, v: "{:2.2f}A".format(v))
 
+        self._dbusservice.add_path('/Info/CutOffVoltage', 0, writeable=True, gettextcallback=lambda p, v: "{:1.3f}V".format(v))
+        self._dbusservice.add_path('/Info/TurnOnSoc', 0, writeable=True, gettextcallback=lambda p, v: "{:3.1f}%".format(v))
+
         self._dbusservice.add_path('/Soc', 33, writeable=True)
 
         self.lastTime = time.time()
@@ -712,6 +715,7 @@ class DbusAggBatService(object):
         chgmode = "bulk"
         turnOff = False
         avgsoc = []
+        cellCutoff = []
         for batt in self.batteries.values():
 
             batt.update(cvavg, allfloat)
@@ -738,6 +742,7 @@ class DbusAggBatService(object):
                 turnOff = True
 
             avgsoc.append(batt.bmssoc)
+            cellCutoff.append(batt.cellCutoff)
 
         avgsoc = sum(avgsoc) / len(avgsoc)
 
@@ -791,9 +796,12 @@ class DbusAggBatService(object):
             if not self.turnedOff:
                 self.turnedOff = True
                 self.turnOnSoc = max(avgsoc + 10, essminsoc + 10)
+                self._dbusservice[ "/Info/TurnOnSoc" ] = self.turnOnSoc
         else:
             if self.turnedOff and avgsoc >= self.turnOnSoc:
                 self.turnedOff = False
+
+        self._dbusservice[ "/Info/CutOffVoltage" ] = min(cellCutoff)
 
         fakesoc = avgsoc
         if self.turnedOff:
