@@ -30,17 +30,37 @@ MbPage {
     property int nBatt: battInfo.valid ? (battInfo.value.length/3) : 0
 
     // Check available services to find rs-inverter and multiplus
-    property string rsinverterPath: undefined
-    property string multiPath: undefined
+    property variant rsinverterPath: undefined
+    property variant multiPath: undefined
+    property string multiName: "Multiplus"
+    property string multiInPath: "/Ac/ActiveIn/L1/P"
     function discoverInverter() {
+        console.log("discover inverter")
         for (var i = 0; i < DBusServices.count; i++)
-            if (DBusServices.at(i).type === DBusService.DBUS_SERVICE_INVERTER)
+            if (DBusServices.at(i).type === DBusService.DBUS_SERVICE_INVERTER) {
                 rsinverterPath = DBusServices.at(i).name
+                console.log("found inverter:"+ rsinverterPath)
+                return
+            }
+        console.log("discover inverter, no result")
     }
     function discoverMulti() {
-        for (var i = 0; i < DBusServices.count; i++) 
-            if (DBusServices.at(i).type === DBusService.DBUS_SERVICE_MULTI)
+        console.log("discover multi")
+        for (var i = 0; i < DBusServices.count; i++) {
+            if (DBusServices.at(i).type === DBusService.DBUS_SERVICE_MULTI) {
                 multiPath = DBusServices.at(i).name
+                console.log("found multi:"+ multiPath)
+                return
+            }
+            if (DBusServices.at(i).type === DBusService.DBUS_SERVICE_MULTI_RS) {
+                multiPath = DBusServices.at(i).name
+                multiName = "Multi RS"
+                multiInPath = "/Ac/In/1/L1/P"
+                console.log("found multi:"+ multiPath)
+                return
+            }
+        }
+        console.log("discover multi, no result")
     }
 
 	Component.onCompleted: {
@@ -48,7 +68,11 @@ MbPage {
         discoverMulti()
 	}
 
-    property string stroff: "off"
+    // Rs6000 inverter + multiplus in assisting mode. multiplus has his CT sensor
+    // on the rs6000 output, so it adds the rs output power to itself!
+    // To get the real output power of the multiplus, we have to subtract ac-out power
+    // from ac-in (CT) power.
+    property bool rshack: (rsinverterPath !== undefined) && (multiPath !== undefined)
 
     function stateAsString(state) {
         if (state === undefined)
@@ -70,6 +94,9 @@ MbPage {
 	        case 10:
 		        text = "assist."
 		        break;
+	        case 252:
+		        text = "extern."
+		        break;
             default:
                 console.log("PageIbrServices.qml:stateAsString(): unknown staate: "+state)
 	    }
@@ -87,54 +114,16 @@ MbPage {
         return "--"
     }
 
-
-    /* 
-	property VBusItem dcVoltage: VBusItem { bind: service.path("/Dc/0/Voltage") }
-	property VBusItem dcCurrent: VBusItem { bind: service.path("/Dc/0/Current") }
-	property VBusItem midVoltage: VBusItem { bind: service.path("/Dc/0/MidVoltage") }
-	property VBusItem productId: VBusItem { bind: service.path("/ProductId") }
-	property VBusItem nrOfDistributors: VBusItem { bind: service.path("/NrOfDistributors") }
-	property VBusItem nrOfBmses: VBusItem { bind: service.path("/NumberOfBmses") }
-
-	property PageLynxDistributorList distributorListPage
-
-	property bool isParallelBms: nrOfBmses.valid
-	property bool isFiamm48TL: productId.value === 0xB012
-	property int numberOfDistributors: nrOfDistributors.valid ? nrOfDistributors.value : 0
-    */
-
     model: VisibleItemModel {
 
-	    // property string acTotalPower: _acTotalPower.item.text
-	    // property variant summary: connected.value === 1 ? acTotalPower : qsTr("Not connected")
 	    property VBusItem connected: VBusItem { id: connected; bind: service.path("/Connected") }
 
-	    property VBusItem nrOfPhasesItem: VBusItem { bind: service.path("/NrOfPhases") }
-	    property VBusItem phase: VBusItem { bind: service.path("/Ac/Phase") }
+	    // property VBusItem nrOfPhasesItem: VBusItem { bind: service.path("/NrOfPhases") }
+	    // property VBusItem phase: VBusItem { bind: service.path("/Ac/Phase") }
 
-	    property int nrOfPhases: nrOfPhasesItem.valid ? nrOfPhasesItem.value : 3
-	    property bool multiPhase: nrOfPhases > 1
-	    property bool hasL1: multiPhase && nrOfPhases >= 1 || phase.valid && phase.value === 0 || !phase.valid
-	    property bool hasL2: multiPhase && nrOfPhases >= 2 || phase.valid && phase.value === 1
-	    property bool hasL3: multiPhase && nrOfPhases >= 3 || phase.valid && phase.value === 2
-
-	    function formatCgErrorCode(value)
-	    {
-		    if (value === undefined)
-			    return "";
-		    var text = qsTr("No error");
-		    switch (value) {
-		    case 1:
-			    text = qsTr("Front selector locked");
-			    break;
-		    }
-		    return text + " (" + value.toString() + ")";
-	    }
-
-	    function formatStatus(text, value)
-	    {
-		    return text + " (" + value.toString() + ")";
-	    }
+	    // property int nrOfPhases: nrOfPhasesItem.valid ? nrOfPhasesItem.value : 3
+	    // property bool multiPhase: nrOfPhases > 1
+	    // property bool hasL1: multiPhase && nrOfPhases >= 1 || phase.valid && phase.value === 0 || !phase.valid
 
 	    MbItemCol {
 		 description: qsTr("PV")
@@ -272,22 +261,18 @@ MbPage {
 		 ]
         }
 
-        // Rs6000 inverter + multiplus in assisting mode. multiplus has his CT sensor
-        // on the rs6000 output, so it adds the rs output power to itself!
-        // To get the real output power of the multiplus, we have to subtract ac-out power
-        // from ac-in (CT) power.
 	    MbItemCol {
 
             id: ac_row
 		    description: qsTr("AC")
-            property int nRows: ((rsinverterPath !== undefined ? 1:0) + (multiPath !== undefined ? 1:0))
+            property int nRows: (((rsinverterPath === undefined) ? 0:1) + ((multiPath === undefined) ? 0:1))
             height: (nRows+1)*smallStyle.itemHeight
 
-            VBusItem { id: multi_state; bind: multiPath+"/State" }
-            VBusItem { id: multi_inpower; bind: multiPath+"/Ac/ActiveIn/L1/P" }
-            VBusItem { id: multi_outpower; bind: multiPath+"/Ac/Out/L1/P" }
             VBusItem { id: inverter_outpower; bind: rsinverterPath+"/Ac/Out/L1/P" }
-            property int multipower: (multi_state.value == 0)? 0 : (multi_outpower.value-multi_inpower.value)
+            VBusItem { id: multi_state; bind: multiPath+"/State" }
+            VBusItem { id: multi_inpower; bind: multiPath+multiInPath }
+            VBusItem { id: multi_outpower; bind: multiPath+"/Ac/Out/L1/P" }
+            property int multipower: rshack ? ((multi_state.value == 0)? 0 : -(multi_inpower.value-multi_outpower.value)) : -(multi_outpower.value+multi_inpower.value)
 
 		    values: [
                 MbItemRow {
@@ -301,7 +286,8 @@ MbPage {
                     ]
                 },
                 MbItemRow {
-                    show: (rsinverterPath !== undefined ? true:false)
+                    // show: (rsinverterPath === undefined ? false:true)
+                    visible: (rsinverterPath === undefined ? false:true)
 		            description: qsTr("RS Inverter:")
                     mbStyle: root.smallStyle
 	                        // property VBusItem vdiff: VBusItem { bind: battPath+"/Voltages/Diff" }
@@ -318,8 +304,9 @@ MbPage {
                     ]
                 },
                 MbItemRow {
-                    show: (multiPath !== undefined ? true:false)
-		            description: qsTr("RS Multi:")
+                    // show: false // (multiPath === undefined ? false:true)
+                    visible: (multiPath === undefined ? false:true)
+		            description: multiName
                     mbStyle: root.smallStyle
 			        values: [
                         MbTextBlock { 
@@ -353,155 +340,6 @@ MbPage {
 			}
 		}
 
-/*
-	MbItemOptions {
-		description: qsTr("Status")
-		bind: service.path("/StatusCode")
-		readonly: true
-		show: valid
-		possibleValues: [
-			MbOption { description: formatStatus(qsTr("Startup"), 0); value: 0 },
-			MbOption { description: formatStatus(qsTr("Startup"), 1); value: 1 },
-			MbOption { description: formatStatus(qsTr("Startup"), 2); value: 2 },
-			MbOption { description: formatStatus(qsTr("Startup"), 3); value: 3 },
-			MbOption { description: formatStatus(qsTr("Startup"), 4); value: 4 },
-			MbOption { description: formatStatus(qsTr("Startup"), 5); value: 5 },
-			MbOption { description: formatStatus(qsTr("Startup"), 6); value: 6 },
-			MbOption { description: qsTr("Running"); value: 7 },
-			MbOption { description: qsTr("Standby"); value: 8 },
-			MbOption { description: qsTr("Boot loading"); value: 9 },
-			MbOption { description: qsTr("Error"); value: 10 },
-			MbOption { description: qsTr("Running (MPPT)"); value: 11 },
-			MbOption { description: qsTr("Running (Throttled)"); value: 12 }
-		]
-	}
-	MbItemValue {
-		description: qsTr("Error Code")
-		item.bind: show ? service.path("/ErrorCode") : ""
-		show: productIdItem.value === froniusInverterProductId
-	}
-
-	MbItemValue {
-		description: qsTr("Error Code")
-		item.text: formatCgErrorCode(cgErrorCode.value)
-		show: productIdItem.value === carloGavazziEmProductId
-
-		VBusItem {
-			id: cgErrorCode
-			bind: productIdItem.value === carloGavazziEmProductId ? service.path("/ErrorCode") : ""
-		}
-	}
-*/
-
-	MbItemRow {
-		description: qsTr("AC Phase L1")
-		values: [
-			MbTextBlock { item.bind: service.path("/Ac/L1/Voltage"); width: 80; height: 25 },
-			MbTextBlock { item.bind: service.path("/Ac/L1/Current"); width: 100; height: 25 },
-			MbTextBlock { item.bind: service.path("/Ac/L1/Power"); width: 120; height: 25 }
-		]
-		show: false // hasL1
-	}
-
-	MbItemRow {
-		description: qsTr("AC Phase L2")
-		values: [
-			MbTextBlock { item.bind: service.path("/Ac/L2/Voltage"); width: 80; height: 25 },
-			MbTextBlock { item.bind: service.path("/Ac/L2/Current"); width: 100; height: 25 },
-			MbTextBlock { item.bind: service.path("/Ac/L2/Power"); width: 120; height: 25 }
-		]
-		show: false // hasL2
-	}
-
-	MbItemRow {
-		description: qsTr("AC Phase L3")
-		values: [
-			MbTextBlock { item.bind: service.path("/Ac/L3/Voltage"); width: 80; height: 25 },
-			MbTextBlock { item.bind: service.path("/Ac/L3/Current"); width: 100; height: 25 },
-			MbTextBlock { item.bind: service.path("/Ac/L3/Power"); width: 120; height: 25 }
-		]
-		show: false // hasL3
-	}
-
-
-	MbItemValue {
-		description: qsTr("Energy L1")
-		item.bind: service.path("/Ac/L1/Energy/Forward")
-		show: false // hasL1
-	}
-
-	MbItemValue {
-		description: qsTr("Energy L2")
-		item.bind: service.path("/Ac/L2/Energy/Forward")
-		show: false // hasL2
-	}
-
-	MbItemValue {
-		description: qsTr("Energy L3")
-		item.bind: service.path("/Ac/L3/Energy/Forward")
-		show: false // hasL3
-	}
-
-	MbItemValue {
-		description: qsTr("Zero feed-in power limit")
-		show: item.valid
-		item.bind: service.path("/Ac/PowerLimit")
-	}
-
-	MbItemOptions {
-		description: qsTr("Phase Sequence")
-		bind: service.path("/PhaseSequence")
-		readonly: true
-		show: valid
-		possibleValues: [
-			MbOption { description: qsTr("L1-L2-L3"); value: 0 },
-			MbOption { description: qsTr("L1-L3-L2"); value: 1 }
-		]
-	}
-/*
-	MbSubMenu {
-		description: qsTr("Setup")
-		show: subpage.show
-		subpage: PageAcInSetup {
-			title: qsTr("Setup")
-			bindPrefix: bindPrefix
-			productId: productIdItem.valid ? productIdItem.value : 0
-		}
-	}
-	MbSubMenu {
-		description: qsTr("Device")
-		subpage: Component {
-			PageDeviceInfo {
-				title: qsTr("Device")
-				bindPrefix: bindPrefix
-
-				MbItemValue {
-					description: qsTr("Data manager version")
-					item.bind: service.path("/DataManagerVersion")
-					show: item.valid
-				}
-			}
-		}
-	}
-*/
-    /*
-	MbItemCol {
-		 description: qsTr("PV")
-         height: 2*smallStyle.itemHeight
-		 values: [
-	        Rectangle {
-		        height: smallStyle.itemHeight
-		        width: 100
-		        color: "green"
-	        },
-	        Rectangle {
-		        height: smallStyle.itemHeight
-		        width: 100
-		        color: "green"
-	        }
-        ]
-    }
-    */
   } // visiblemodel
 
 } // Page
