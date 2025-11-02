@@ -627,6 +627,7 @@ class DbusAggBatService(object):
         self._dbusservice.add_path('/Info/MaxChargeCurrent', 0, writeable=True, gettextcallback=lambda p, v: "{:2.2f}A".format(v))
 
         self._dbusservice.add_path('/Info/CutOffVoltage', 0, writeable=True, gettextcallback=lambda p, v: "{:1.3f}V".format(v))
+        self._dbusservice.add_path('/Info/RealSoc', 0, writeable=True, gettextcallback=lambda p, v: "{:3.1f}%".format(v))
         self._dbusservice.add_path('/Info/TurnOnSoc', 0, writeable=True, gettextcallback=lambda p, v: "{:3.1f}%".format(v))
 
         self._dbusservice.add_path('/Soc', 33, writeable=True)
@@ -801,6 +802,7 @@ class DbusAggBatService(object):
             if self.turnedOff and avgsoc >= self.turnOnSoc:
                 self.turnedOff = False
 
+        self._dbusservice[ "/Info/RealSoc" ] = avgsoc
         self._dbusservice[ "/Info/CutOffVoltage" ] = min(cellCutoff)
 
         fakesoc = avgsoc
