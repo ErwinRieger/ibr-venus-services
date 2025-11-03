@@ -82,7 +82,7 @@ class SystemMonitor(Monitor):
         logger.debug("serviceRemoved(): "+service.name)
 
         if service.name.startswith("com.victronenergy.inverter"):
-            self.itemsChanged({INVPOWERPATH: 0})
+            self.itemsChanged(service, {INVPOWERPATH: 0})
 
     async def systemInstanceChanged(self, service):
         
