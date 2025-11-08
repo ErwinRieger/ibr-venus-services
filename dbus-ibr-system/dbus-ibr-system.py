@@ -44,6 +44,10 @@ class ClientBase(ServiceHandler):
         res = {}
         for p in self.paths:
             v = await self.fetch_value(p)
+            while v==None or v==[]:
+                logger.debug(f"waiting for initial {p}, got: {v}")
+                await asyncio.sleep(0.25)
+                v = await self.fetch_value(p)
             logger.debug(f"initial {p}: {v}")
             res[p] = v
         return res
