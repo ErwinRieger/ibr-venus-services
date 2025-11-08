@@ -97,20 +97,26 @@ class NeeyControl(object):
         new_balancerStates = {}
         new_stateChanges = {}
 
+        logging.info(f"self.balancerstaes: {self.balancerStates}")
+
         for dev, (devname, btmac) in balancers_info.items():
 
             logging.info(f"Found battery: {dev}, name: {devname} with MAC {btmac}")
             
+            if not btmac: continue
+
             if dev in self.stateChanges and self.stateChanges[dev] != None:
                 logging.info(f'Warning, setup_balancers: state pending {self.stateChanges[dev]}')
 
             new_balancers[dev] = NeeyBalancer(dev, btmac, self.doneCb)
             new_stateChanges[dev] = None
             new_balancerStates[dev] = None
+            logging.info(f"new_balancerstaes: {new_balancerStates}")
 
         self.balancers = new_balancers
         self.balancerStates = new_balancerStates
         self.stateChanges = new_stateChanges
+        logging.info(f"self.balancerstaes: {self.balancerStates}")
 
     def updateWrapper(self):
         return exit_on_error(self.update)
@@ -153,6 +159,8 @@ class NeeyControl(object):
 
         if self.running:
             logging.info(f'Warning, already running...')
+
+        logging.info(f"self.balancerstaes: {self.balancerStates}")
 
         for dev in self.balancerStates: # newstate:
 
