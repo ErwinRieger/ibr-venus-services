@@ -138,14 +138,16 @@ class SystemMonitor(Monitor):
             self.mpptmodes[service.name] = m
 
             # /MppOperationMode "1 = Voltage or Current limited, 2 = MPPT Tracker active"
-            # state=1 (limited) if all of the chargers are limited
+            # state=1 (limited) if one of the chargers is limited
             # state=0 (off) if all of the chargers are off
             # else: 2
             mpmode = 0
             for m in self.mpptmodes.values():
                 logger.debug(f"mppt mode: {m}")
                 if m == 1:
-                    mpmode = max(mpmode, 1)
+                    # mpmode = max(mpmode, 1)
+                    mpmode = 1
+                    break
                 if m == 2:
                     mpmode = 2
 
