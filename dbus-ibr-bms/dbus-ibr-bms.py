@@ -60,17 +60,10 @@ logger.setLevel(logging.INFO)
 ##################################################
 # Configuration:
 from config import *
-logger.info(f"Config: NUMBER_OF_BATTERIES: {NUMBER_OF_BATTERIES}")
-logger.info(f"Config: BATTERY_CAPACITY: {BATTERY_CAPACITY}")
 ##################################################
 
 # Current
-C100 = max(BATTERY_CAPACITY/100, 1)
-C2 = BATTERY_CAPACITY/2
 
-CGES = BATTERY_CAPACITY * NUMBER_OF_BATTERIES
-CGES10 = max(CGES/10, 1)
-CGES20 = max(CGES/20, 1)
 
 # Cell voltages
 # cellfloat = 3.370
@@ -266,13 +259,6 @@ def fu(u, bcv):
         return 0
     return min((u-umin)/(bcv-umin), 1)
 
-def fi(i):
-    if i > C2:
-        return 0
-    elif i < C100:
-        return 1
-    return (1-((i-C100)/(C2-C100)))
-
 class expfilter(object):
     value = 0
     k = 0
@@ -311,6 +297,12 @@ class battery(object):
         self.cellCutoff = 0
         self.turnOff = False
 
+        self.BATTERY_CAPACITY = self.get_value("/InstalledCapacity")
+        self.maxChargeCurrent = self.get_value("/Info/MaxChargeCurrent")
+
+        self.c100 = max(self.BATTERY_CAPACITY/100, 1)
+        logger.info(f"BATTERY_CAPACITY: {self.BATTERY_CAPACITY}, maxChargeCurrent: {self.maxChargeCurrent}")
+
     def get_value(self, path):
         return self.dbusmon.get_value(self.batt, path)
 
@@ -335,6 +327,13 @@ class battery(object):
         if self.isBalancing() or self.sm.current_state == self.sm.floating:
             return True
 
+    def fi(self, i):
+        if i > self.maxChargeCurrent:
+            return 0
+        elif i < self.c100:
+            return 1
+        return (1-((i-self.c100)/(self.maxChargeCurrent-self.c100)))
+
     def update(self, cvavg, allfloat):
 
         ubatt = self.dbusmon.get_value(self.batt, "/Dc/0/Voltage")
@@ -350,7 +349,7 @@ class battery(object):
         if self.sm.current_state == self.sm.bulk:
             bcv = max(
                 cellpull,
-                round( min( cellpull + vrange * (cavg-C100) / C2, MAX_CHARGING_CELL_VOLTAGE ), 2)
+                round( min( cellpull + vrange * (cavg-self.c100) / self.maxChargeCurrent, MAX_CHARGING_CELL_VOLTAGE ), 2)
                 )
         elif self.sm.current_state == self.sm.balancing:
             bcv = cellpull
@@ -361,7 +360,7 @@ class battery(object):
                 bcv = cellpull
 
         self.f_u = fu(self.ucell, bcv)
-        f_i = fi(cavg)
+        f_i = self.fi(cavg)
         self.estsoc = min( self.f_u * f_i * 100, 99 )
 
         # yyyy debug
@@ -421,10 +420,9 @@ class battery(object):
         dynCutoffEnd = 2.6
         dynCutoffRange = MIN_CELL_VOLTAGE - dynCutoffEnd
         if self.cbatt:
-            # cellCutoff = max(2.85, 3.1 + 0.25 * (min(self.cbatt, 0)/BATTERY_CAPACITY))
             self.cellCutoff = bound(
                     dynCutoffEnd,
-                    MIN_CELL_VOLTAGE + dynCutoffRange * (self.cbatt/BATTERY_CAPACITY),
+                    MIN_CELL_VOLTAGE + dynCutoffRange * (self.cbatt/self.BATTERY_CAPACITY),
                     MIN_CELL_VOLTAGE)
         else:
             self.cellCutoff = MIN_CELL_VOLTAGE
@@ -621,7 +619,7 @@ class DbusAggBatService(object):
         self._dbusservice.add_path('/Info/MaxChargeVoltage', self.chargevoltage, writeable=True, gettextcallback=lambda p, v: "{:2.2f}V".format(v))
 
         self.lastchargevoltage = None
-        self.maxccfilter = expfilter(CGES10, 0.25)
+        self.maxccfilter = expfilter(10, 0.25)
 
         self.lastmaxcc = None
         self._dbusservice.add_path('/Info/MaxChargeCurrent', 0, writeable=True, gettextcallback=lambda p, v: "{:2.2f}A".format(v))
@@ -651,11 +649,14 @@ class DbusAggBatService(object):
         # Get dynamic servicename for batteries
         battServices = self.maindbusmon.get_service_list(classfilter="com.victronenergy.battery") or []
 
-        if len(battServices) != NUMBER_OF_BATTERIES:
-            logger.error(f"Error: found {len(battServices)} batterie(s), should have: {NUMBER_OF_BATTERIES}, exiting!")
+        if len(battServices) == 0:
+            logger.error("Error: found no batterie(s), should have one, at least, exiting!")
             sys.exit(1)
             return
 
+        # self.CGES = 0
+        self.CGES20 = 0
+        self.maxChargeCurrent = 0
         for batt in battServices:
             logger.info(f"found initial batt: {batt}")
             GLib.timeout_add(250, self.addBatteryWrapper, batt)
@@ -717,9 +718,13 @@ class DbusAggBatService(object):
         turnOff = False
         avgsoc = []
         cellCutoff = []
+
         for batt in self.batteries.values():
 
             batt.update(cvavg, allfloat)
+
+            avgsoc.append(batt.bmssoc)
+            cellCutoff.append(batt.cellCutoff)
 
             # control balancers
             if not (allbulk or allfloat or allbalanced):
@@ -741,9 +746,6 @@ class DbusAggBatService(object):
 
             if batt.turnOff:
                 turnOff = True
-
-            avgsoc.append(batt.bmssoc)
-            cellCutoff.append(batt.cellCutoff)
 
         avgsoc = sum(avgsoc) / len(avgsoc)
 
@@ -767,8 +769,7 @@ class DbusAggBatService(object):
         for inverter in self.inverters:
             loadcurrent += min(self.maindbusmon.get_value(inverter, "/Dc/0/Current") or 0, 0)
 
-        self.maxccfilter.filter( CGES20 + MAXCHARGECURRENT * (1 - math.pow(estsoc/99.0, 2)) - loadcurrent)
-        new: self.maxccfilter.filter( min(MAXCHARGECURRENT, CGES20 + MAXCHARGECURRENT * (1 - math.pow(estsoc/99.0, 2)) - loadcurrent) )
+        self.maxccfilter.filter( min(self.maxChargeCurrent, self.CGES20 + self.maxChargeCurrent * (1 - math.pow(estsoc/99.0, 2)) - loadcurrent) )
 
         chargevoltages = map(lambda b: b.chargevoltage, self.batteries.values())
         self.chargevoltage = min(chargevoltages)
@@ -854,7 +855,13 @@ class DbusAggBatService(object):
         dbusmon = MyDbusMonitor({ batt: self.monitorlist },
                 valueChangedCallback=self.value_changed_wrapper)
 
-        self.batteries[batt] = battery(dbusmon, batt)
+        battObj = battery(dbusmon, batt)
+        self.batteries[batt] = battObj
+
+        # self.CGES += battObj.BATTERY_CAPACITY
+        self.CGES20 += max(battObj.BATTERY_CAPACITY/20, 1)
+        self.maxChargeCurrent += battObj.maxChargeCurrent
+        logger.info(f"newbatt: CGES20 {self.CGES20}, maxChargeCurrent: {self.maxChargeCurrent}")
 
         for fqnkey in self.monitorlist:
             if fqnkey in self.ignorePath:
