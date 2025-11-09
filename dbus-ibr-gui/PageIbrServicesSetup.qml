@@ -45,6 +45,97 @@ MbPage {
             ]
 		}
 
+	    MbItemCol {
+            description: qsTr("Discharge")
+            // height: rootInfo.nBatt*root.mbStyle.itemHeight
+            height: 2*root.mbStyle.itemHeight
+
+            // VBusItem { id: inverter_outpower; bind: rsinverterPath+"/Ac/Out/L1/P" }
+            // VBusItem { id: multi_state; bind: multiPath+"/State" }
+            // VBusItem { id: multi_inpower; bind: multiPath+multiInPath }
+            // VBusItem { id: multi_outpower; bind: multiPath+"/Ac/Out/L1/P" }
+            // property int multipower: rshack ? ((multi_state.value == 0)? 0 : -(multi_inpower.value-multi_outpower.value)) : -(multi_outpower.value+multi_inpower.value)
+
+            // realsoc, fakesoc, restartsoc
+            // lowest-cell, cell-cutoff
+		    values: [
+                MbItemRow {
+		            description: qsTr("SOC:")
+                    mbStyle: smallStyle
+			        values: [
+                        MbTextValue { 
+                            item: VBusItem { value: "real" }
+                            mbStyle: smallStyle
+                        },
+                        MbTextBlock { 
+                            item.bind: rootInfo.service.path("/Info/RealSoc");
+                            mbStyle: smallStyle
+                            item.decimals:1;
+                            item.unit: "%"
+                        },
+                        MbTextValue { 
+                            item: VBusItem { value: "fake" }
+                            mbStyle: smallStyle
+                        },
+                        MbTextBlock { 
+                            item.bind: rootInfo.service.path("/Soc");
+                            mbStyle: smallStyle
+                            item.decimals:1;
+                            item.unit: "%"
+                        },
+                        MbTextValue { 
+                            item: VBusItem { value: "turnon" }
+                            mbStyle: smallStyle
+                        },
+                        MbTextBlock { 
+                            item.bind: rootInfo.service.path("/Info/TurnOnSoc")
+                            mbStyle: smallStyle
+                            item.decimals:1;
+                            item.unit: "%"
+                        }
+                    ]
+                },
+                MbItemRow {
+		            description: qsTr("Cutoff:")
+                    mbStyle: smallStyle
+	                        // property VBusItem vdiff: VBusItem { bind: battPath+"/Voltages/Diff" }
+			        values: [
+                        MbTextValue { 
+                            item: VBusItem { value: "mincell" }
+                            mbStyle: smallStyle
+                        },
+                        MbTextBlock { 
+                            item.bind: rootInfo.service.path("/System/MinCellVoltage");
+                            mbStyle: smallStyle
+                            item.decimals:3;
+                            item.unit: "V"
+                        },
+                        MbTextValue { 
+                            item: VBusItem { value: "cutoff" }
+                            mbStyle: smallStyle
+                        },
+                        MbTextBlock { 
+                            item.bind: rootInfo.service.path("/Info/CutOffVoltage");
+                            mbStyle: smallStyle
+                            item.decimals:3;
+                            item.unit: "V"
+                        }
+/*
+                        MbTextBlock { 
+                            VBusItem { id: inv_state; bind: rsinverterPath+"/State" }
+                            item: VBusItem { value: stateAsString(inv_state.value) }
+                            mbStyle: smallStyle
+                        },
+                        MbTextBlock { 
+                            item.bind: rsinverterPath+"/Ac/Out/L1/P";
+                            mbStyle: smallStyle
+                        }
+*/
+                    ]
+                }
+            ]
+		}
+
 		MbEditBox {
 			description: qsTr("Energy Price")
             matchString: "0123456789.,"

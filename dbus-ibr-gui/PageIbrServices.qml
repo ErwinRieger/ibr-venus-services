@@ -203,7 +203,7 @@ MbPage {
                       },
                       MbTextBlock { 
                         item.bind: service.path("/Soc");
-                    mbStyle: smallStyle
+                        mbStyle: smallStyle
                         item.decimals:1;
                         item.unit: "%"
                       }
