@@ -154,10 +154,11 @@ class IbrRsHackService(AioDbusService):
 
         if self.inverteron:
 
+            now = time.time()
+
             if INVPOWERPATH in values:
 
                 power = values[INVPOWERPATH]
-                now = time.time()
 
                 if self.output and self.ts:
                     dt = now - self.ts
