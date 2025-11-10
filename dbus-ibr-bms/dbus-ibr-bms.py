@@ -806,7 +806,7 @@ class DbusAggBatService(object):
         if turnOff:
             if not self.turnedOff:
                 self.turnedOff = True
-                self.turnOnSoc = max(avgsoc + 10, essminsoc + 10)
+                self.turnOnSoc = max(avgsoc + 25, essminsoc + 25) # xxx make a setting "TurnOnThreshold" for this
                 self._dbusservice[ "/Info/TurnOnSoc" ] = self.turnOnSoc
         else:
             if self.turnedOff and avgsoc >= self.turnOnSoc:
