@@ -638,7 +638,8 @@ class DbusAggBatService(object):
         self.chargers = self.maindbusmon.get_service_list(classfilter="com.victronenergy.solarcharger") or {}
         self.inverters = self.maindbusmon.get_service_list(classfilter="com.victronenergy.inverter") or {}
         for multi in self.maindbusmon.get_service_list(classfilter="com.victronenergy.multi") or {}:
-            self.inverters[multi] = 1
+            if multi != "com.victronenergy.multi.rshack": # xxx filter out .multi.rshack
+                self.inverters[multi] = 1
         for multiplus in self.maindbusmon.get_service_list(classfilter="com.victronenergy.vebus") or {}:
             self.inverters[multiplus] = 1
 
@@ -679,11 +680,19 @@ class DbusAggBatService(object):
         exit_on_error(self.value_changed, *args, **kwargs)
 
     def deviceAddedCb(self, service, instance):
-        logger.error(f"Error: new battery {service} appeared, exiting!")
+
+        if service == "com.victronenergy.multi.rshack": # xxx filter out .multi.rshack
+            return
+
+        logger.error(f"Error: dependent service {service} appeared, exiting!")
         sys.exit(1)
 
     def deviceRemovedCb(self, service, instance):
-        logger.error(f"Error: battery {service} diappeared, exiting!")
+
+        if service == "com.victronenergy.multi.rshack": # xxx filter out .multi.rshack
+            return
+
+        logger.error(f"Error: dependent service {service} diappeared, exiting!")
         sys.exit(1)
 
     def updateWrapper(self):
