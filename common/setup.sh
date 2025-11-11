@@ -76,6 +76,11 @@ doifchangedormissing() {
     fi
 }
 
+patchedFileName() {
+    patchfile="$1"
+    head -n2 "$patchfile"|cut -d" " -f2|cut -d"	" -f1|sort|head -1
+}
+
 ss=""
 ttydev="$1"
 svcsrcdir="./service"
@@ -106,6 +111,14 @@ if [ "$cmd" = "install" ]; then
         echo ""
         echo "*** Apply patch(es) ***"
         for pf in $patches; do
+            origfile="$(patchedFileName $pf)"
+            backup="${origfile}.ibrorig"
+            if [ ! -e "$backup" ]; then
+                    echo "creating backup: $backup"
+                    cp "$origfile" "$backup"
+            # else
+                    # echo "backup $backup existing"
+            fi
             patch -N -p0  < $pf
         done    
     fi
