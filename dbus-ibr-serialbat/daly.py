@@ -4,8 +4,6 @@ from utils import *
 from config import *
 from struct import *
 
-from dbusmonitor import DbusMonitor
-
 import math
 
 class Daly(Battery):
@@ -61,23 +59,6 @@ class Daly(Battery):
         self.min_battery_voltage = MIN_CELL_VOLTAGE * self.cell_count
         self.max_battery_current = MAX_BATTERY_CURRENT
         self.max_battery_discharge_current = MAX_BATTERY_DISCHARGE_CURRENT
-
-        dummy = {'code': None, 'whenToLog': 'configChange', 'accessLevel': None}
-        dbus_tree = {
-                        'com.victronenergy.inverter': {
-                            "/Dc/0/Voltage": dummy,
-                        },
-                        'com.victronenergy.solarcharger': {
-                            "/Dc/0/Voltage": dummy,
-                        },
-                    }
-        self.dbusmon = DbusMonitor(dbus_tree)
-
-        self.chargers = self.dbusmon.get_service_list(classfilter="com.victronenergy.solarcharger") or {}
-        for inverter in self.dbusmon.get_service_list(classfilter="com.victronenergy.inverter") or {}:
-            self.chargers[inverter] = 1
-        logger.info(f"chargers: {self.chargers}")
-
         return True
 
     def refresh_data(self):
@@ -136,7 +117,7 @@ class Daly(Battery):
     
         self.voltage = (voltage / 10)
         self.current = current
-        self.soc = (soc / 10)
+        self.set_soc(soc / 10)
 
         self.capacity_remain = (self.capacity * self.soc)/100
         return True

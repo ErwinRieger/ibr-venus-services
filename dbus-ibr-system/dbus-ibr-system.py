@@ -3,7 +3,7 @@
 import logging
 import sys
 import os
-import asyncio
+import os, asyncio
 
 from argparse import ArgumentParser
 
@@ -20,7 +20,11 @@ sys.path.insert(1, '/data/ibr-venus-services/aiovelib')
 sys.path.insert(1, '/data/ibr-venus-services/common/python')
 
 from aiovelib.service import Service as AioDbusService
-from aiovelib.service import IntegerItem, TextItem, DoubleItem
+from aiovelib.service import IntegerItem, TextItem, DoubleItem, TextArrayItem
+sys.path.append("/data/conf")
+sys.path.append("/data/var/lib")
+from map_serialdev_to_id import SerialToId
+from map_id_to_btmac import IdToBTMac
 from aiovelib.client import Monitor, Service as AioDbusClient, ServiceHandler
 from aiovelib.localsettings import SettingsService as SettingsClient, Setting
 
@@ -40,6 +44,10 @@ class ClientBase(ServiceHandler):
         res = {}
         for p in self.paths:
             v = await self.fetch_value(p)
+            while v==None or v==[]:
+                logger.debug(f"waiting for initial {p}, got: {v}")
+                await asyncio.sleep(0.25)
+                v = await self.fetch_value(p)
             logger.debug(f"initial {p}: {v}")
             res[p] = v
         return res
@@ -134,27 +142,20 @@ class SystemMonitor(Monitor):
             self.mpptmodes[service.name] = m
 
             # /MppOperationMode "1 = Voltage or Current limited, 2 = MPPT Tracker active"
-            # state=1 (limited) if all of the chargers are limited
+            # state=1 (limited) if one of the chargers is limited
             # state=0 (off) if all of the chargers are off
             # else: 2
-            off = True
-            limit = True
+            mpmode = 0
             for m in self.mpptmodes.values():
                 logger.debug(f"mppt mode: {m}")
-                if m > 0:
-                    off = False
-                if m != 1:
-                    limit = False
+                if m == 1:
+                    # mpmode = max(mpmode, 1)
+                    mpmode = 1
+                    break
+                if m == 2:
+                    mpmode = 2
 
-            if off:
-                self.system_service.publishMpptMode(0)
-                return
-
-            if limit:
-                self.system_service.publishMpptMode(1)
-                return
-
-            self.system_service.publishMpptMode(2)
+            self.system_service.publishMpptMode(mpmode)
 
 class IbrSystemService(AioDbusService):
 
@@ -169,6 +170,19 @@ class IbrSystemService(AioDbusService):
         self.add_item(TextItem("/Mgmt/ProcessVersion", "0.1"))
         self.add_item(TextItem("/Mgmt/Connection", "local"))
         self.add_item(IntegerItem("/Connected", 1))
+
+        # Create a reverse map for easier lookup
+        IdToSerial = {v: k for k, v in SerialToId.items()}
+        
+        batt_info = []
+        for serial_id, (bt_mac, device_name) in IdToBTMac.items():
+            if serial_id in IdToSerial:
+                device_path = IdToSerial[serial_id]
+                # device_basename will be like "ttyUSB1"
+                device_basename = os.path.basename(device_path)
+                batt_info.extend([device_basename, device_name, bt_mac])
+
+        self.add_item(TextArrayItem("/Info/BattInfo", batt_info))
 
         self.add_item(DoubleItem("/BattLoad", None))
         self.add_item(DoubleItem("/TotalPVYield", None))

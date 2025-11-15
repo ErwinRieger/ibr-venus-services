@@ -95,7 +95,6 @@ class Battery(object):
     def __init__(self, port, baud):
         self.port = port
         self.baud_rate = baud
-        self.role = 'battery'
         self.type = 'Generic'
         self.poll_interval = 1000 # mS # xxx overwritten in Battery subclass (Daliy)
 
@@ -147,6 +146,9 @@ class Battery(object):
         # It is called each poll just before the data is published to vedbus
         # return false when fail, true if successful
         return False
+
+    def set_soc(self, soc):
+        self.soc = round(soc, 2)
 
     def get_capacity_remain(self):
         if self.capacity_remain is not None:

@@ -1,0 +1,10 @@
+--- /opt/victronenergy/gui/qml/MbItemRow.qml.orig	2025-11-01 17:43:16.712478528 +0100
++++ /opt/victronenergy/gui/qml/MbItemRow.qml	2025-11-01 17:43:31.192608969 +0100
+@@ -27,6 +27,7 @@
+ 	// The description of the values shown
+ 	MbTextDescription {
+ 		id: _description
++        mbStyle: root.mbStyle
+ 		anchors {
+ 			left: root.left; leftMargin: mbStyle.marginDefault
+ 			verticalCenter: parent.verticalCenter

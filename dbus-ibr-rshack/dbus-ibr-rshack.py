@@ -26,18 +26,23 @@ from aiovelib.client import Monitor, Service as AioDbusClient, ServiceHandler
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# On: 3
 MULTIOFFMODE = 4
-POWERPATH = "/Ac/Out/L1/P"
+INVPOWERPATH = "/Ac/Out/L1/P"
 
 # Monitor RS6000
 class RSHandler(AioDbusClient, ServiceHandler):
     servicetype = "com.victronenergy.device"
-    paths = { "/Ac/Out/L1/P" }
+    paths = { INVPOWERPATH, "/Mode" }
 
     async def wait_for_essential_paths(self):
         res = {}
         for p in self.paths:
             v = await self.fetch_value(p)
+            while v==None or v==[]:
+                logger.debug(f"waiting for initial {p}, got: {v}")
+                await asyncio.sleep(0.25)
+                v = await self.fetch_value(p)
             logger.debug(f"initial {p}: {v}")
             res[p] = v
         return res
@@ -51,6 +56,10 @@ class MPHandler(AioDbusClient, ServiceHandler):
         res = {}
         for p in self.paths:
             v = await self.fetch_value(p)
+            while v==None or v==[]:
+                logger.debug(f"waiting for initial {p}, got: {v}")
+                await asyncio.sleep(0.25)
+                v = await self.fetch_value(p)
             logger.debug(f"initial {p}: {v}")
             res[p] = v
         return res
@@ -82,7 +91,7 @@ class SystemMonitor(Monitor):
         logger.debug("serviceRemoved(): "+service.name)
 
         if service.name.startswith("com.victronenergy.inverter"):
-            self.itemsChanged({"/Ac/L1/P": 0})
+            self.itemsChanged(service, {"/Mode": MULTIOFFMODE, INVPOWERPATH: 0})
 
     async def systemInstanceChanged(self, service):
         
@@ -94,7 +103,7 @@ class SystemMonitor(Monitor):
     def itemsChanged(self, service, values):
 
         # logger.debug(f"items changed, service: {service.name}, values: {values}")
-        self.inverterService.itemsChanged(values)
+        self.inverterService.itemsChanged(service, values)
 
 class IbrRsHackService(AioDbusService):
 
@@ -109,10 +118,12 @@ class IbrRsHackService(AioDbusService):
         self.add_item(TextItem("/Mgmt/ProcessVersion", "0.1"))
         self.add_item(TextItem("/Mgmt/Connection", "local"))
         self.add_item(IntegerItem("/Connected", 1))
+        self.add_item(TextItem("/CustomName", ""))
 
         self.add_item(DoubleItem("/Energy/InverterToAcOut", 0))
         self.add_item(IntegerItem('/Ac/In/1/Type', 0))
         self.add_item(DoubleItem('/Yield/User', 0))
+        self.add_item(IntegerItem("/MppOperationMode", 0))
 
         # Flag, output energy consumption if
         # multiplus is off
@@ -121,36 +132,48 @@ class IbrRsHackService(AioDbusService):
         self.ts = 0
         self.energy = 0
         self.lastEnergy = 0
+        self.inverteron = False
 
-    def itemsChanged(self, values):
+    def itemsChanged(self, service, values):
 
         if "/Mode" in values:
             mode = values["/Mode"]
-            if mode == MULTIOFFMODE:
-                if not self.output:
-                    logger.debug(f"itemsChanged(): multi turned off")
-                    self.output = True
-                    self.ts = 0
+            if service.name.startswith("com.victronenergy.inverter"):
+                self.inverteron = mode and (mode != MULTIOFFMODE)
+                logger.debug(f"itemsChanged(): inverter changed mode: {mode}, turnedon: {self.inverteron}")
             else:
-                logger.debug(f"itemsChanged(): multi turned on")
-                self.output = False
+                # Multiplus
+                if (not mode) or (mode == MULTIOFFMODE):
+                    if not self.output:
+                        logger.debug(f"itemsChanged(): multi turned off")
+                        self.output = True
+                        self.ts = 0
+                else:
+                    logger.debug(f"itemsChanged(): multi turned on")
+                    self.output = False
 
-        if POWERPATH in values:
+        if self.inverteron:
 
-            power = values[POWERPATH]
             now = time.time()
 
-            if self.output and self.ts:
-                dt = now - self.ts
-                self.energy += (self.power*dt)/3600000.0
-                # logger.debug(f"energy: {self.power}, dt: {dt}, {self.energy}")
-                e = round(self.energy, 3)
-                if e != self.lastEnergy:
-                    with self as service:
-                        service["/Energy/InverterToAcOut"] = e
-                    self.lastEnergy = e
+            if INVPOWERPATH in values:
 
-            self.power = power
+                power = values[INVPOWERPATH]
+
+                if self.output and self.ts:
+                    dt = now - self.ts
+                    self.energy += (self.power*dt)/3600000.0
+                    # logger.debug(f"energy: {self.power}, dt: {dt}, {self.energy}")
+                    e = round(self.energy, 3)
+                    if e != self.lastEnergy:
+                        with self as service:
+                            service["/Energy/InverterToAcOut"] = e
+                        self.lastEnergy = e
+
+                self.power = power
+            else:
+                self.power = 0
+
             self.ts = now
 
 async def amain(bus_type):

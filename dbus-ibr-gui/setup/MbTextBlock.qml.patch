@@ -1,0 +1,14 @@
+--- /opt/victronenergy/gui/qml/MbTextBlock.qml.orig	2025-11-01 17:43:16.716478564 +0100
++++ /opt/victronenergy/gui/qml/MbTextBlock.qml	2025-11-01 17:43:31.192608969 +0100
+@@ -12,8 +12,11 @@
+ 
+ 	clip: true // don't draw text outside the block
+ 
++	property MbStyle mbStyle: MbStyle {}
++
+ 	MbTextValue {
+ 		id: _textItem
+ 		item: root.item
++        mbStyle: root.mbStyle
+ 	}
+ }

@@ -26,10 +26,7 @@ sys.path.insert(1, '/data/ibr-venus-services/common/python')
 from vedbus import VeDbusService
 from dbusmonitor import DbusMonitor
 from ve_utils import exit_on_error
-
-sys.path.append(os.path.join("/data/db"))
-from map_serialdev_to_id import *
-from  map_id_to_btmac import *
+from venus_service_utils import parse_batt_info
 
 from libbt import NeeyBalancer
 
@@ -44,11 +41,10 @@ class NeeyControl(object):
         super(NeeyControl, self).__init__()
 
         dummy = {"code": None, "whenToLog": "configChange", "accessLevel": None}
-        # self.dbusmon = DbusMonitor({ "com.victronenergy.battery" : { "/Ess/Balancing": dummy } },
-         #        valueChangedCallback=self.balancing_changed_wrapper)
-        self.dbusmon = DbusMonitor({ 
-                "com.victronenergy.system" : { "/ActiveBmsService": dummy },
-                "com.victronenergy.battery" : { "/Ess/Balancing": dummy },
+        self.dbusmon = DbusMonitor({
+                'com.victronenergy.system' : { '/ActiveBmsService': dummy },
+                'com.victronenergy.battery' : { '/Ess/Balancing': dummy },
+                'com.victronenergy.ibrsystem': {'/Info/BattInfo': dummy}
                 },
                 valueChangedCallback=self.value_changed_wrapper)
 
@@ -70,24 +66,11 @@ class NeeyControl(object):
         self.balancers = {}
         self.balancerStates = {}
         self.stateChanges = {}
-        for dev in SerialToId:
-            logging.info(f"configured batt device: {dev}")
 
-            # Get MAC addr of neey balancer for this batt 
-            devid = SerialToId[dev]
-            if devid in IdToBTMac:
-                (neey_mac, desc) = IdToBTMac[devid]
-
-                devname = dev.split("/")[-1]
-                logging.info(f"mac for {devname}: {neey_mac}, desc: {desc}")
-                self.balancers[devname] = NeeyBalancer(
-                    devname, neey_mac, self.doneCb)
-
-                self.stateChanges[devname] = None
-                self.balancerStates[devname] = None
+        batt_info = self.dbusmon.get_value("com.victronenergy.ibrsystem", "/Info/BattInfo")
+        self.setup_balancers(batt_info)
 
         self.running = False
-        # GLib.idle_add(self.idlefunc)
         GLib.idle_add(self.idlefuncWrapper)
 
         # Get dynamic servicename for selected BMS
@@ -103,6 +86,37 @@ class NeeyControl(object):
 
         GLib.timeout_add(10000, self.updateWrapper)
         return
+
+    def setup_balancers(self, batt_info):
+
+        logging.info(f"Setting up balancers from BattInfo: {batt_info}")
+
+        balancers_info = parse_batt_info(batt_info)
+
+        new_balancers = {}
+        new_balancerStates = {}
+        new_stateChanges = {}
+
+        logging.info(f"self.balancerstaes: {self.balancerStates}")
+
+        for dev, (devname, btmac) in balancers_info.items():
+
+            logging.info(f"Found battery: {dev}, name: {devname} with MAC {btmac}")
+            
+            if not btmac: continue
+
+            if dev in self.stateChanges and self.stateChanges[dev] != None:
+                logging.info(f'Warning, setup_balancers: state pending {self.stateChanges[dev]}')
+
+            new_balancers[dev] = NeeyBalancer(dev, btmac, self.doneCb)
+            new_stateChanges[dev] = None
+            new_balancerStates[dev] = None
+            logging.info(f"new_balancerstaes: {new_balancerStates}")
+
+        self.balancers = new_balancers
+        self.balancerStates = new_balancerStates
+        self.stateChanges = new_stateChanges
+        logging.info(f"self.balancerstaes: {self.balancerStates}")
 
     def updateWrapper(self):
         return exit_on_error(self.update)
@@ -128,7 +142,10 @@ class NeeyControl(object):
         exit_on_error(self.value_changed, *args, **kwargs)
 
     def value_changed(self, service, path, options, changes, deviceInstance):
-        if service == "com.victronenergy.battery.system":
+        if service == 'com.victronenergy.ibrsystem':
+            batt_info = changes["Value"]
+            self.setup_balancers(batt_info)
+        elif service == "com.victronenergy.battery.system":
             value = changes["Value"]
             logging.info(f'bms_changed: {value}')
             self.activebms = value
@@ -143,6 +160,8 @@ class NeeyControl(object):
         if self.running:
             logging.info(f'Warning, already running...')
 
+        logging.info(f"self.balancerstaes: {self.balancerStates}")
+
         for dev in self.balancerStates: # newstate:
 
             state = False
@@ -153,7 +172,7 @@ class NeeyControl(object):
             # Get serial device from dbus service name (com.victronenergy.battery.ttyUSBx)
 
             if self.stateChanges[dev] != None:
-                logging.info(f'Warning, stateChanged: state pending {newstate}, self.stateChanges[dev]')
+                logging.info(f'Warning, stateChanged: state pending {newstate}, {self.stateChanges[dev]}')
 
             self.stateChanges[dev] = state
 

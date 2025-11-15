@@ -72,15 +72,20 @@ Die Dienste in diesem Projekt interagieren teilweise miteinander:
 
 *   **`dbus-ibr-loads`**: Hängt von `dbus-ibr-system` ab, um die Drosselung der PV-Leistung zu erkennen.
 
-*   **`dbus-ibr-neeycontrol`**: Hängt vom Balancing-Status ab, der vom `dbus-ibr-bms`-Dienst veröffentlicht wird.
+*   **`dbus-ibr-neeycontrol`**: Hängt vom Balancing-Status (veröffentlicht von `dbus-ibr-bms`) und von den Batterie-Informationen (veröffentlicht von `dbus-ibr-system`) ab.
+
+*   **`dbus-ibr-gui`**: Integriert eine neue Seite in die Remote Console, die von `dbus-ibr-bms` abhängt.
 
 *   **Unabhängige Dienste**: `dbus-ibr-mpcontrol`, `dbus-ibr-rshack` und `dbus-ibr-shelly-rsmulti` haben keine direkten Abhängigkeiten zu anderen `dbus-ibr-*` Diensten.
 
 Zusammenfassende Kette der Abhängigkeiten:
 
-``dbus-ibr-serialbat`` -> ``dbus-ibr-bms`` -> ``dbus-ibr-neeycontrol``
+``dbus-ibr-serialbat`` -> ``dbus-ibr-bms``
+``dbus-ibr-bms`` -> ``dbus-ibr-neeycontrol``
+``dbus-ibr-bms`` -> ``dbus-ibr-gui``
 
 ``dbus-ibr-system`` -> ``dbus-ibr-loads``
+``dbus-ibr-system`` -> ``dbus-ibr-neeycontrol``
 
 Veröffentlichte Dienste
 =======================
@@ -88,6 +93,7 @@ Veröffentlichte Dienste
 * **dbus-ibr-system**: Sammelt und berechnet systemweite Werte und stellt sie unter Pfaden wie ``/TotalPVYield``, ``/BattLoad`` und ``/MppOperationMode`` bereit.
 * **dbus-ibr-serialbat**: Ein angepasster serieller Batterietreiber für Daly- oder Felicity-BMS.
 * **dbus-ibr-bms**: Fasst die Werte von mehreren Batterien zu einer virtuellen Batterie zusammen und implementiert einen LiFePO4-Ladealgorithmus.
+* **dbus-ibr-gui**: Fügt der Remote Console eine "IBR Services"-Seite hinzu, um eine Übersicht und Konfiguration der IBR-Dienste zu ermöglichen.
 * **dbus-ibr-mpcontrol**: Schaltet einen MultiPlus-Wechselrichter (im Assisting-Modus) bei hoher Last zu.
 * **dbus-ibr-neeycontrol**: Steuert Neey-Active-Balancer, um ein "Balance-when-charged"-Verfahren zu implementieren.
 * **dbus-ibr-shelly-rsmulti**: Implementiert eine "Nulleinspeisung" (Zero-Export) für ein ESS mit einem RS-Multi und einem Shelly 3EM Pro Smartmeter.

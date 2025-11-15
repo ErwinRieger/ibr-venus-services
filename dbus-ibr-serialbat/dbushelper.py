@@ -8,10 +8,12 @@ sys.path.insert(1, '/data/ibr-venus-services/common/python')
 sys.path.insert(1, '/data/ibr-venus-services/common/velib_python')
 
 from vedbus import VeDbusService
-from settingsdevice import SettingsDevice
+from dbusmonitor import DbusMonitor
+
 import battery
 from config import *
 from utils import logger
+from venus_service_utils import parse_batt_info, get_device_instance
 
 def get_bus():
     return dbus.SessionBus() if 'DBUS_SESSION_BUS_ADDRESS' in os.environ else dbus.SystemBus()
@@ -23,39 +25,30 @@ class DbusHelper:
         # +10 to be above virtual aggregate BMS's for
         # automatatic DVCC and Battery Monitor detection
         self.instance = int(self.battery.port[-1]) + 15
-        self.settings = None
         devport = self.battery.port[self.battery.port.rfind('/') + 1:]
         self._dbusservice = VeDbusService(f"com.victronenergy.{SERVICENAME}.{devport}", get_bus())
+
+        dummy = {'code': None, 'whenToLog': 'configChange', 'accessLevel': None}
+        dbus_tree = {
+                        'com.victronenergy.ibrsystem': {
+                            "/Info/BattInfo": dummy,
+                        },
+                    }
+        self.dbusmon = DbusMonitor(dbus_tree)
+
         self.error_count = 0
 
-    def setup_instance(self):
-        # bms_id = self.battery.production if self.battery.production is not None else \
-        #     self.battery.port[self.battery.port.rfind('/') + 1:]
-        bms_id = self.battery.port[self.battery.port.rfind('/') + 1:]
-        path = '/Settings/Devices/ibrserialbatt_' + str(bms_id).replace(" ", "_")
-        default_instance = 'battery:1'
-        settings = {'instance': [path + '/ClassAndVrmInstance', default_instance, 0, 0], }
-
-        self.settings = SettingsDevice(get_bus(), settings, self.handle_changed_setting)
-        self.battery.role, self.battery.instance = self.get_role_instance()
-
-    def get_role_instance(self):
-        val = self.settings['instance'].split(':')
-        logger.info("DeviceInstance = %d", int(val[1]))
-        return val[0], int(val[1])
-
-    def handle_changed_setting(self, setting, oldvalue, newvalue):
-        if setting == 'instance':
-            logger.info("Changed DeviceInstance = %d", self.instance)
-            return
-
     def setup_vedbus(self):
+
         # Set up dbus service and device instance
         # and notify of all the attributes we intend to update
         # This is only called once when a battery is initiated
-        self.setup_instance()
-        short_port = self.battery.port[self.battery.port.rfind('/') + 1:]
-        logger.info("%s" % ("com.victronenergy.battery." + short_port))
+
+        bms_id = self.battery.port[self.battery.port.rfind('/') + 1:]
+
+        devinst = get_device_instance(self._dbusservice.dbusconn, "ibrserialbat_" + bms_id, 'battery:5')
+
+        logger.info("com.victronenergy.battery." + bms_id)
 
         # Get the settings for the battery
         if not self.battery.get_settings():
@@ -67,12 +60,20 @@ class DbusHelper:
         self._dbusservice.add_path('/Mgmt/Connection', 'Serial ' + self.battery.port)
 
         # Create the mandatory objects
-        self._dbusservice.add_path('/DeviceInstance', self.instance)
+        self._dbusservice.add_path('/DeviceInstance', devinst)
         self._dbusservice.add_path('/ProductId', 0x0)
-        self._dbusservice.add_path('/ProductName', f'IBR Serial Batt ({self.battery.type})')
         self._dbusservice.add_path('/FirmwareVersion', self.battery.version)
         self._dbusservice.add_path('/HardwareVersion', self.battery.hardware_version)
         self._dbusservice.add_path('/Connected', 1)
+
+        # Get devname from BattInfo
+        dev_basename = self.battery.port.split("/")[-1]
+        all_batts = parse_batt_info(self.dbusmon.get_value("com.victronenergy.ibrsystem", '/Info/BattInfo'))
+        if dev_basename in all_batts:
+            devname, _ = all_batts[dev_basename] # value is a tuple (devname, btmac)
+            self._dbusservice.add_path('/ProductName', f'IBR Serial Batt {devname} ({self.battery.type})')
+        else:
+            self._dbusservice.add_path('/ProductName', f'IBR Serial Batt ({self.battery.type})')
 
         # Create static battery info
         self._dbusservice.add_path('/Info/BatteryLowVoltage', self.battery.min_battery_voltage, writeable=True,
@@ -191,7 +192,7 @@ class DbusHelper:
 
         # Update SOC, DC and System items
         self._dbusservice['/System/NrOfCellsPerBattery'] = self.battery.cell_count
-        self._dbusservice['/Soc'] = round(self.battery.soc, 2)
+        self._dbusservice['/Soc'] = self.battery.soc
         self._dbusservice['/Dc/0/Voltage'] = self.battery.voltage
         self._dbusservice['/Dc/0/Current'] = self.battery.current
         self._dbusservice['/Dc/0/Power'] = self.battery.voltage * self.battery.current

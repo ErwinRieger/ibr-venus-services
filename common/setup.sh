@@ -76,6 +76,11 @@ doifchangedormissing() {
     fi
 }
 
+patchedFileName() {
+    patchfile="$1"
+    head -n2 "$patchfile"|cut -d" " -f2|cut -d"	" -f1|sort|head -1
+}
+
 ss=""
 ttydev="$1"
 svcsrcdir="./service"
@@ -84,10 +89,12 @@ if [ "$cmd" = "install" ]; then
 
     cd $srcdir
 
-    if [ -d service-templates ]; then
+    if [ -d service ]; then
+        ss="simple"
+    elif [ -d service-templates ]; then
+        ss="serialstarter"
         svcsrcdir="./service-templates"
         svcdestdir="$prefix/opt/victronenergy/service-templates/$svcname"
-        ss="1"
         if [ -z "$ttydev" ]; then
             echo "!!! Warning: This is a serial-starter service, but no ttydev given, runtime !!!"
             echo "!!! service files will not be installed! !!!"
@@ -104,31 +111,61 @@ if [ "$cmd" = "install" ]; then
         echo ""
         echo "*** Apply patch(es) ***"
         for pf in $patches; do
+            origfile="$(patchedFileName $pf)"
+            backup="${origfile}.ibrorig"
+            if [ ! -e "$backup" ]; then
+                    echo "creating backup: $backup"
+                    cp "$origfile" "$backup"
+            # else
+                    # echo "backup $backup existing"
+            fi
             patch -N -p0  < $pf
         done    
     fi
 
-    dstdir="$prefix/opt/victronenergy/$svcname"
+    dstdir_base="$prefix/opt/victronenergy"
     echo ""
-    echo "*** Install application files to $dstdir ***"
-    for f in $(eval ls $(cat setup/filelist)); do
-        if [ "$f" = "setup.sh" ]; then
-            continue
-        fi 
-        # echo "copy $f to $dstdir;"
-        doifchangedormissing copyandlog $f $dstdir $f
+    echo "*** Install application files to $dstdir_base ***"
+    # Read filelist and separate source files from the optional destination
+    cat setup/filelist | while read src_part dest_dir_part; do
+        # Ignore comments and empty lines
+        case "$src_part" in
+            ''|'#'*)
+                continue
+                ;;
+        esac
+
+        # echo "src_part: $src_part, dest: $dest_dir_part"
+
+        if [ -z "$dest_dir_part" ]; then
+            # No destination specified, use default
+            dstdir="$dstdir_base/$svcname"
+        else
+            # Destination specified, remove leading/trailing whitespace
+            dstdir="$dstdir_base/$dest_dir_part"
+        fi
+
+        # Use eval to expand glob patterns
+        for f in $(eval ls $src_part); do
+            if [ "$f" = "setup.sh" ]; then
+                continue
+            fi
+            doifchangedormissing copyandlog "$f" "$dstdir" "$(basename $f)"
+        done
     done
+
     if [ -f "config_local.py" ]; then
-        doifchangedormissing copyandlog config_local.py $dstdir config_local.py
+        doifchangedormissing copyandlog config_local.py "$dstdir_base/$svcname" config_local.py
     fi
 
-    echo ""
-    echo "*** Install service files to $svcdestdir ***"
-    for f in $(cd $svcsrcdir; find . -type f); do
-        doifchangedormissing copyandlog $svcsrcdir/$f $svcdestdir $f
-    done
+    if [ -n "$ss" ]; then
+        echo ""
+        echo "*** Install service files to $svcdestdir ***"
+        for f in $(cd $svcsrcdir; find . -type f); do
+            doifchangedormissing copyandlog $svcsrcdir/$f $svcdestdir $f
+        done
 
-    if [ -z "$ss" ]; then
+        if [ "$ss" = "simple" ]; then
             # simple service, install to /service
 	        dstdir="$prefix/service/$svcname"
             echo ""
@@ -136,33 +173,34 @@ if [ "$cmd" = "install" ]; then
             for f in $(cd $svcsrcdir; find . -type f); do
                 doifchangedormissing copyandlog $svcsrcdir/$f $dstdir $f
             done
-    else
-      if [ -n "$ttydev" ]; then
-        # serialstarter, install to /var/volatile and link to /service
-	    dstdir="$prefix/var/volatile/services/$svcname.$ttydev"
-        echo ""
-        echo "*** Install serialstarter service files to $dstdir ***"
-        for f in $(cd $svcsrcdir; find . -type f); do
-            sedandcopy $svcsrcdir/$f $dstdir $f $ttydev
-        done
-	    dstdir2="$prefix/service/$svcname.$ttydev"
-        echo ""
-        echo "*** Link serialstarter service files from $dstdir to $dstdir2 ***"
-        mkdir -p $prefix/service
-        if [ -L $dstdir2 ]; then
-            echo "rm $dstdir2"
-            rm $dstdir2
-        elif [ -e $dstdir2 ]; then
-            echo "rm -rf $dstdir2"
-            rm -rf $dstdir2
+        elif [ "$ss" = "serialstarter" ]; then
+            if [ -n "$ttydev" ]; then
+                # serialstarter, install to /var/volatile and link to /service
+	            dstdir="$prefix/var/volatile/services/$svcname.$ttydev"
+                echo ""
+                echo "*** Install serialstarter service files to $dstdir ***"
+                for f in $(cd $svcsrcdir; find . -type f); do
+                    sedandcopy $svcsrcdir/$f $dstdir $f $ttydev
+                done
+	            dstdir2="$prefix/service/$svcname.$ttydev"
+                echo ""
+                echo "*** Link serialstarter service files from $dstdir to $dstdir2 ***"
+                mkdir -p $prefix/service
+                if [ -L $dstdir2 ]; then
+                    echo "rm $dstdir2"
+                    rm $dstdir2
+                elif [ -e $dstdir2 ]; then
+                    echo "rm -rf $dstdir2"
+                    rm -rf $dstdir2
+                fi
+                echo " ln -s $dstdir $dstdir2"
+                ln -s $dstdir $dstdir2
+            fi
         fi
-        echo " ln -s $dstdir $dstdir2"
-        ln -s $dstdir $dstdir2
-      fi
     fi
 elif [ "$cmd" = "installall" ]; then
     dn="$(dirname $srcdir)"
-    for service in $(cat /data/conf/installed-ibr-services); do
+    for service in $(cat $prefix//data/conf/installed-ibr-services); do
         echo "calling $dn/$service/setup.sh install"
         $dn/$service/setup.sh install
     done
