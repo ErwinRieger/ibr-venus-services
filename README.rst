@@ -80,9 +80,12 @@ Die Dienste in diesem Projekt interagieren teilweise miteinander:
 
 Zusammenfassende Kette der Abhängigkeiten:
 
-``dbus-ibr-serialbat`` -> ``dbus-ibr-bms`` -> ``dbus-ibr-neeycontrol``
+``dbus-ibr-serialbat`` -> ``dbus-ibr-bms``
+``dbus-ibr-bms`` -> ``dbus-ibr-neeycontrol``
+``dbus-ibr-bms`` -> ``dbus-ibr-gui``
 
-``dbus-ibr-system`` -> ``dbus-ibr-loads``, ``dbus-ibr-neeycontrol``
+``dbus-ibr-system`` -> ``dbus-ibr-loads``
+``dbus-ibr-system`` -> ``dbus-ibr-neeycontrol``
 
 Veröffentlichte Dienste
 =======================
