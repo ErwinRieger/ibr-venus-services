@@ -28,6 +28,8 @@ from aiovelib.service import Service as AioDbusService
 from aiovelib.service import IntegerItem, TextItem # , DoubleItem
 from aiovelib.client import Monitor, Service as AioDbusClient, ServiceHandler
 
+from venus_service_utils import bound
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -68,7 +70,8 @@ class ACHandler(AioDbusClient, ServiceHandler):
               "/Ess/UseInverterPowerSetpoint",
               "/Ac/In/1/CurrentLimit",
               "/Ac/In/1/L1/V",
-              "/Ac/In/1/L1/P" }
+              "/Ac/In/1/L1/P",
+              "/Soc" }
 
     async def wait_for_essential_paths(self):
         res = {}
@@ -90,7 +93,7 @@ class SystemMonitor(Monitor):
             'com.victronenergy.grid': ShellyHandler,
             'com.victronenergy.acsystem': ACHandler,
         })
-        self.values = {} # { "sp": 0, "ip": 0, "iv": 0 }
+        self.values = {}
         self.inverterService = inverterService
         inverterService.setMonitor(self)
 
@@ -106,15 +109,7 @@ class SystemMonitor(Monitor):
         values = await service.wait_for_essential_paths()
         logger.debug(f"initial values: {values}")
 
-        if "/Ac/In/1/CurrentLimit" in values:
-            cl = values['/Ac/In/1/CurrentLimit']
-            self.inverterService.setCurrentLimit(cl)
-
         self.itemsChanged(service, values)
-
-        if len(self.values) == 3:
-            asyncio.create_task(self.loop())
-
 
     async def serviceRemoved(self, service):
 
@@ -129,19 +124,10 @@ class SystemMonitor(Monitor):
 
     def itemsChanged(self, service, values):
 
-        if "/Ac/Power" in values:
-            self.values["sp"] = values["/Ac/Power"]
+        self.values.update(values)
 
-        if "/Ac/In/1/L1/P" in values:
-            self.values["ip"] = values["/Ac/In/1/L1/P"]
-
-        if "/Ac/In/1/L1/V" in values:
-            self.values["iv"] = values["/Ac/In/1/L1/V"]
-
-    async def loop(self):
-
-        while True:
-            await asyncio.sleep(1)
+        if len(self.values) == 8:
+            # Got all needed values
             self.inverterService.itemsChanged(self.values)
 
 class IbrEssService(AioDbusService):
@@ -159,12 +145,9 @@ class IbrEssService(AioDbusService):
         self.add_item(IntegerItem("/Connected", 1))
 
         self.acservice = None
-        self.currentlimit = None
-        self.powerlimit = None
         self.monitor = None
         self.lastPower = None
         self.lastUpdate = time.time()
-        # self.nextOutput = time.time() + 20
         self.isum = 0
         self.delta_isum = 0
         self.Kp = 0.5
@@ -175,8 +158,6 @@ class IbrEssService(AioDbusService):
         self.lower_noise = -NOISELEVEL
         self.upper_noise = NOISELEVEL
 
-        # asyncio.create_task(self.ping())
-
     def setMonitor(self, monitor):
         self.monitor = monitor
         asyncio.create_task(self.update())
@@ -185,9 +166,77 @@ class IbrEssService(AioDbusService):
 
         if service.startswith("com.victronenergy.acsystem"):
             self.acservice = service
-            self.monitor.set_value_async(service, '/Ess/AcPowerSetpoint', -0)
-            self.monitor.set_value_async(service, '/Ess/InverterPowerSetpoint', -0)
+            self.monitor.set_value_async(service, '/Ess/AcPowerSetpoint', 0)
+            self.monitor.set_value_async(service, '/Ess/InverterPowerSetpoint', 0)
             self.monitor.set_value_async(service, '/Ess/UseInverterPowerSetpoint', 0)
+
+    def itemsChanged(self, values):
+
+        dt = time.time() - self.lastUpdate
+        _p = values["/Ac/Power"] # shelly power, positiv: verbrauch
+        power = values["/Ac/In/1/L1/P"] # inverter power
+        _load = _p - power
+
+        self.pavg = calculate_rtt(self.pavg, _p, scale=0.33)
+        self.loadavg = calculate_rtt(self.loadavg, _load, scale=0.33)
+        self.voltage = calculate_rtt(self.voltage, values["/Ac/In/1/L1/V"], scale=0.33)
+
+        # logger.debug(f"*** itemsChanged(), dt: {dt:.2f}: ***")
+
+        if self.lastPower is not None:
+            if (self.lastPower <= 0 and _p > 0) or (self.lastPower > 0 and _p < 0):
+                # zero cross
+                self.lower_noise = -NOISELEVEL
+                self.upper_noise = NOISELEVEL
+                if abs(_p) < abs(self.lastPower):
+                    if _p >= 0:
+                        self.upper_noise = min(_p+NOISELEVEL, 10+NOISELEVEL)
+                    else:
+                        self.lower_noise = max(_p-NOISELEVEL, -5-NOISELEVEL)
+                else:
+                    if self.lastPower >= 0:
+                        self.upper_noise = min(self.lastPower+NOISELEVEL, 10+NOISELEVEL)
+                    else:
+                        self.lower_noise = max(self.lastPower-NOISELEVEL, -5-NOISELEVEL)
+
+                # logger.debug(f"cross {self.lastPower:.1f} -> {_p:.1f}, window: {self.lower_noise:.1f} - {self.upper_noise:.1f}")
+
+        self.lastPower = _p
+        self.lastUpdate = time.time()
+
+        soc = values["/Soc"]
+
+        if soc <= 10:
+            logger.debug(f"skip update, soc low: {soc}")
+            self.loadavg = 0
+            self.isum = 0
+            self.delta_isum = 0
+            return
+
+        if _p >= self.lower_noise and _p <= self.upper_noise:
+
+            # no isum change window
+            # logger.debug(f"skip update, window: {self.lower_noise:.1f} - {self.upper_noise:.1f}")
+            # logger.debug(f"p(e): {_p:.1f}, pavg: {self.pavg:.1f}, power: {power:.1f}, load: {_load:.1f}, loadavg: {self.loadavg:.1f}")
+            return
+
+        elif abs(_p) < 10: # slow isum change window
+
+            # logger.debug(f"very slow isum update")
+            self.delta_isum += 0.5 * self.pavg * dt
+
+        elif abs(_p) < 15: # slow isum change window
+
+            # logger.debug(f"slow isum update")
+            self.delta_isum += 0.75 * self.pavg * dt
+        
+        else: # normal isum change window
+
+            # logger.debug(f"normal isum update")
+            self.delta_isum += self.pavg * dt
+
+        # logger.debug(f"p(e): {_p:.1f}, pavg: {self.pavg:.1f}, power: {power:.1f}, load: {_load:.1f}, loadavg: {self.loadavg:.1f}, isum: {self.isum:.1f}")
+        # self.lastUpdate = time.time()
 
     async def update(self):
 
@@ -211,84 +260,12 @@ class IbrEssService(AioDbusService):
 
             # logger.debug(f"P: {P:.1f}, I: {I:.1f}, D: {D:.1f}, out: {out:.1f}")
 
-            out = max(out, 0)
-            out = min(out, 2500)
-
-            self.powerlimit = out
+            out = bound(0, out, 2500)
 
             cl = round(out/self.voltage, 3)
             self.setOutput(out, cl)
 
             await asyncio.sleep(1)
-
-    def itemsChanged(self, values):
-
-        dt = time.time() - self.lastUpdate
-        _p = values["sp"] # positiv: verbrauch
-        # v = values["iv"]
-        power = values["ip"]
-        _load = _p - power
-
-        self.pavg = calculate_rtt(self.pavg, _p, scale=0.33)
-        self.loadavg = calculate_rtt(self.loadavg, _load, scale=0.33)
-        self.voltage = calculate_rtt(self.voltage, values["iv"], scale=0.33)
-
-        # logger.debug(f"*** itemsChanged(), dt: {dt:.2f}: ***")
-
-        if self.lastPower:
-            if (self.lastPower <= 0 and _p > 0) or (self.lastPower > 0 and _p < 0):
-                # zero cross
-                self.lower_noise = -NOISELEVEL
-                self.upper_noise = NOISELEVEL
-                if abs(_p) < abs(self.lastPower):
-                    if _p >= 0:
-                        self.upper_noise = min(_p+NOISELEVEL, 10+NOISELEVEL)
-                    else:
-                        self.lower_noise = max(_p-NOISELEVEL, -5-NOISELEVEL)
-                else:
-                    if self.lastPower >= 0:
-                        self.upper_noise = min(self.lastPower+NOISELEVEL, 10+NOISELEVEL)
-                    else:
-                        self.lower_noise = max(self.lastPower-NOISELEVEL, -5-NOISELEVEL)
-
-                # logger.debug(f"cross {self.lastPower:.1f} -> {_p:.1f}, window: {self.lower_noise:.1f} - {self.upper_noise:.1f}")
-
-        self.lastPower = _p
-
-        if _p >= self.lower_noise and _p <= self.upper_noise:
-
-            # no isum change window
-            # logger.debug(f"skip update, window: {self.lower_noise:.1f} - {self.upper_noise:.1f}")
-            # logger.debug(f"p(e): {_p:.1f}, pavg: {self.pavg:.1f}, power: {power:.1f}, load: {_load:.1f}, loadavg: {self.loadavg:.1f}")
-            self.lastUpdate = time.time()
-            return
-
-        elif abs(_p) < 10: # slow isum change window
-
-            # logger.debug(f"very slow isum update")
-            self.delta_isum += 0.5 * self.pavg * dt
-
-        elif abs(_p) < 15: # slow isum change window
-
-            # logger.debug(f"slow isum update")
-            self.delta_isum += 0.75 * self.pavg * dt
-        
-        else: # normal isum change window
-
-            # logger.debug(f"normal isum update")
-            self.delta_isum += self.pavg * dt
-
-        # logger.debug(f"p(e): {_p:.1f}, pavg: {self.pavg:.1f}, power: {power:.1f}, load: {_load:.1f}, loadavg: {self.loadavg:.1f}, isum: {self.isum:.1f}")
-        self.lastUpdate = time.time()
-
-    # async  def ping(self):
-
-        # while True:
-            # await asyncio.sleep(1)
-
-            # if time.time() > self.nextOutput:
-                # logger.debug(f"ping")
-                # self.setOutput(self.powerlimit, self.currentlimit)
 
     def setOutput(self, pout, cl):
 
@@ -299,12 +276,6 @@ class IbrEssService(AioDbusService):
 
         logger.debug(f"setting setpoint: {pout:.1f} (scaled: {p:.1f}, currentlimit: {cl}")
         self.monitor.set_value_async(self.acservice, '/Ac/In/1/CurrentLimit', cl)
-
-        # self.nextOutput = time.time() + 30 # we have to update rs multi/acsystem every 60 seconds
-
-    def setCurrentLimit(self, cl):
-        self.currentlimit = cl
-        self.isum = (cl * 230) / self.Ki
 
 async def amain(bus_type):
 

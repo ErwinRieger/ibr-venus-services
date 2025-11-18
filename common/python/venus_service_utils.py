@@ -1,13 +1,13 @@
 import logging
 import os
 
-from settingsdevice import SettingsDevice
-
 def get_device_instance(bus, prefix, default_instance):
     """
     Gets the device instance from DBus settings.
     e.g. /Settings/Devices/ibrserialbatt_ttyUSB0/ClassAndVrmInstance -> battery:6
     """
+
+    from settingsdevice import SettingsDevice
 
     path = '/Settings/Devices/' + prefix
     settings = {'instance': [path + '/ClassAndVrmInstance', default_instance, 0, 0]}
