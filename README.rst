@@ -2,7 +2,7 @@
 ibr-venus-services
 ====================
 
-Eine Sammlung von Diensten für das Victron Venus OS zur Überwachung und Steuerung von Victron-Solaranlagen.
+Eine Sammlung von Diensten für das Victron Venus OS zur Überwachung und Steuerung von Victron ESS Systemen.
 
 .. note::
 
@@ -12,6 +12,7 @@ Voraussetzungen
 ===============
 
 * Getestet mit Venus OS v3.55 und v3.60. Andere Versionen sind möglicherweise ebenfalls kompatibel.
+* Für die Installation der ibr-venus-services sollte man sich gut mit dem Venus-OS System auskennen. Z.b. ist der Umgang mit SSH und Kommandozeile notwendig.
 
 Installation
 ============
