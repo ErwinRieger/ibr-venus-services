@@ -2,42 +2,7 @@
 
 """
 Service to aggregate multiple (serial-) batteries into one virtual battery and
-to implement a charging algorithm for them.
-"""
-
-"""
-XXXX
-
-watch (entire) batsoc and (bank-) min cellvoltage (xxx bank- dynamic low bound) and
-control ESS/inverter through faked (entire-) battsoc
-
-minsoc: 10%
-onsoc:  15%
-
-batsoc (bank):
-
-
-fakesoc (entire):
-
-
-hysterese:
-
-    zum ausschalten:
-        flag setzen
-        wir merken uns beim ausschalten den aktuellen gesamt-soc
-        fake-soc auf 5% setzen, dadurch inverter aus
-
-    wenn wir turned off sind und batt-spannung sich erholt hat:
-        warten bis gesamt-soc >= dem gemerkten end-sock+hysterese (10%) ist
-
-        --> fake beenden und realen (10%) grösseren gesamt-sock "freigeben"
-            xxx: es ist nicht gesagt, dass der inverter dann auch schon wieder
-            einschaltet, da er ja eine eigene hysterese hat...
-
-        
-
-
-    
+to implement a 'SOC-Less' charging/discharging algorithm for them.
 """
 
 from gi.repository import GLib
@@ -66,9 +31,6 @@ from config import *
 
 
 # Cell voltages
-# cellfloat = 3.370
-# cellpull = cellfloat + 0.015
-cellfloat = 3.340
 cellfloat = 3.335
 cellpull = 3.380
 
@@ -89,7 +51,7 @@ VERSION = "0.1"
 from statemachine import StateMachine, State
 from statemachine.exceptions import TransitionNotAllowed
 
-minbalancesoc = 99
+minbalancesoc = 99 # Estimated SOC when to start balancing
 
 class ChargerStateMachine(StateMachine):
     bulk = State(initial=True)
