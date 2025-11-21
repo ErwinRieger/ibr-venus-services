@@ -2,7 +2,6 @@
 
 import logging
 import sys
-import os
 import os, asyncio
 
 from argparse import ArgumentParser
@@ -57,7 +56,7 @@ class ClientBase(ServiceHandler):
 
 class SystemMonitor(Monitor):
 
-    def __init__(self, bus, make_bus, system_service):
+    def __init__(self, bus, system_service):
 
         # Solar chargers, Inverter multi rs
         chargerType = type("ChargerClient", (AioDbusClient, ClientBase),
@@ -226,10 +225,7 @@ async def amain(bus_type):
     service = IbrSystemService(bus)
     await service.register()
 
-    monitor = await SystemMonitor.create(bus,
-        lambda: MessageBus(bus_type=bus_type),
-        service)
-
+    monitor = await SystemMonitor.create(bus, service)
 
     await bus.wait_for_disconnect()
 
