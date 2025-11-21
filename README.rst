@@ -2,7 +2,7 @@
 ibr-venus-services
 ====================
 
-Eine Sammlung von Diensten für das Victron Venus OS zur Überwachung und Steuerung von Victron ESS Systemen.
+Eine Sammlung von Diensten für das Victron Venus OS zur Überwachung und Steuerung von Victron ESS Systemen. Der interessanteste Service ist **dbus-ibr-bms**, mit dessen Hilfe ein "SOC-less" Betrieb eines ESS möglich ist. Dies ermöglicht die Steuerung des Energy Storage Systems (ESS) ohne direkte Abhängigkeit vom (prinzipiell ungenauen) State of Charge (SOC). Weitere Besonderheiten von ibr-bms sind ein "cell-voltage-based" Lade-/Entlade-Algorithmus und die dynamische Steuerung von (Neey-)Balancern, um ein "balance-when-charged"-Schema zu implementieren (zusammen mit ibr-neeycontrol).
 
 .. note::
 
