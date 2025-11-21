@@ -3,5 +3,5 @@
 
 . /opt/victronenergy/serial-starter/run-service.sh
 
-app="python3 /data/etc/venus-os_dbus-pvcontrol/dbus-pvcontrol.py"
+app="python3 /opt/victronenergy/dbus-ibr-mpcontrol/dbus-ibr-mpcontrol.py"
 start 
