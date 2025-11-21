@@ -8,11 +8,27 @@ Eine Sammlung von Diensten für das Victron Venus OS zur Überwachung und Steuer
 
    Dieses Projekt befindet sich in aktiver Entwicklung, wird aber bereits auf mehreren Victron ESS-Systemen produktiv eingesetzt.
 
+.. contents:: Inhaltsverzeichnis
+   :depth: 2
+
 Voraussetzungen
 ===============
 
 * Getestet mit Venus OS v3.55 und v3.60. Andere Versionen sind möglicherweise ebenfalls kompatibel.
 * Für die Installation der ibr-venus-services sollte man sich gut mit dem Venus-OS System auskennen. Z.b. ist der Umgang mit SSH und Kommandozeile notwendig.
+
+Veröffentlichte Dienste
+=======================
+
+* **dbus-ibr-system**: Sammelt und berechnet systemweite Werte und stellt sie unter Pfaden wie ``/TotalPVYield``, ``/BattLoad`` und ``/MppOperationMode`` bereit.
+* **dbus-ibr-serialbat**: Ein angepasster serieller Batterietreiber für Daly- oder Felicity-BMS.
+* **dbus-ibr-bms**: Fasst die Werte von mehreren Batterien zu einer virtuellen Batterie zusammen und implementiert einen LiFePO4-Ladealgorithmus.
+* **dbus-ibr-gui**: Fügt der Remote Console eine "IBR Services"-Seite hinzu, um eine Übersicht und Konfiguration der IBR-Dienste zu ermöglichen.
+* **dbus-ibr-neeycontrol**: Steuert Neey-Active-Balancer, um ein "Balance-when-charged"-Verfahren zu implementieren.
+* **dbus-ibr-shelly-rsmulti**: Implementiert eine "Nulleinspeisung" (Zero-Export) für ein ESS mit einem RS-Multi und einem Shelly 3EM Pro Smartmeter.
+* **dbus-ibr-loads**: Steuert einen Verbraucher (z.B. Wasserkocher) via MQTT, um überschüssige PV-Energie zu nutzen.
+* **dbus-ibr-mpcontrol**: Schaltet einen sekundären MultiPlus-Wechselrichter dynamisch ein und aus, abhängig von der Last eines primären RS-Wechselrichters. Dies wird im speziellen Setup (ESS3) verwendet, um bei hoher Last zusätzliche Leistung bereitzustellen.
+* **dbus-ibr-rshack**: Ein Workaround zur Korrektur von Anzeige- und Verbrauchswerten in speziellen System-Setups (ESS3).
 
 Installation
 ============
@@ -87,16 +103,3 @@ Zusammenfassende Kette der Abhängigkeiten:
 
 ``dbus-ibr-system`` -> ``dbus-ibr-loads``
 ``dbus-ibr-system`` -> ``dbus-ibr-neeycontrol``
-
-Veröffentlichte Dienste
-=======================
-
-* **dbus-ibr-system**: Sammelt und berechnet systemweite Werte und stellt sie unter Pfaden wie ``/TotalPVYield``, ``/BattLoad`` und ``/MppOperationMode`` bereit.
-* **dbus-ibr-serialbat**: Ein angepasster serieller Batterietreiber für Daly- oder Felicity-BMS.
-* **dbus-ibr-bms**: Fasst die Werte von mehreren Batterien zu einer virtuellen Batterie zusammen und implementiert einen LiFePO4-Ladealgorithmus.
-* **dbus-ibr-gui**: Fügt der Remote Console eine "IBR Services"-Seite hinzu, um eine Übersicht und Konfiguration der IBR-Dienste zu ermöglichen.
-* **dbus-ibr-mpcontrol**: Schaltet einen sekundären MultiPlus-Wechselrichter dynamisch ein und aus, abhängig von der Last eines primären RS-Wechselrichters. Dies wird im speziellen Setup (ESS3) verwendet, um bei hoher Last zusätzliche Leistung bereitzustellen.
-* **dbus-ibr-neeycontrol**: Steuert Neey-Active-Balancer, um ein "Balance-when-charged"-Verfahren zu implementieren.
-* **dbus-ibr-shelly-rsmulti**: Implementiert eine "Nulleinspeisung" (Zero-Export) für ein ESS mit einem RS-Multi und einem Shelly 3EM Pro Smartmeter.
-* **dbus-ibr-loads**: Steuert einen Verbraucher (z.B. Wasserkocher) via MQTT, um überschüssige PV-Energie zu nutzen.
-* **dbus-ibr-rshack**: Ein Workaround zur Korrektur von Anzeige- und Verbrauchswerten in speziellen System-Setups (ESS3).
