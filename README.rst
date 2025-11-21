@@ -95,8 +95,8 @@ Veröffentlichte Dienste
 * **dbus-ibr-serialbat**: Ein angepasster serieller Batterietreiber für Daly- oder Felicity-BMS.
 * **dbus-ibr-bms**: Fasst die Werte von mehreren Batterien zu einer virtuellen Batterie zusammen und implementiert einen LiFePO4-Ladealgorithmus.
 * **dbus-ibr-gui**: Fügt der Remote Console eine "IBR Services"-Seite hinzu, um eine Übersicht und Konfiguration der IBR-Dienste zu ermöglichen.
-* **dbus-ibr-mpcontrol**: Schaltet einen MultiPlus-Wechselrichter (im Assisting-Modus) bei hoher Last zu.
+* **dbus-ibr-mpcontrol**: Schaltet einen sekundären MultiPlus-Wechselrichter dynamisch ein und aus, abhängig von der Last eines primären RS-Wechselrichters. Dies wird im speziellen Setup (ESS3) verwendet, um bei hoher Last zusätzliche Leistung bereitzustellen.
 * **dbus-ibr-neeycontrol**: Steuert Neey-Active-Balancer, um ein "Balance-when-charged"-Verfahren zu implementieren.
 * **dbus-ibr-shelly-rsmulti**: Implementiert eine "Nulleinspeisung" (Zero-Export) für ein ESS mit einem RS-Multi und einem Shelly 3EM Pro Smartmeter.
 * **dbus-ibr-loads**: Steuert einen Verbraucher (z.B. Wasserkocher) via MQTT, um überschüssige PV-Energie zu nutzen.
-* **dbus-ibr-rshack**: Ein Workaround zur Korrektur von Anzeige- und Verbrauchswerten in speziellen System-Setups.
+* **dbus-ibr-rshack**: Ein Workaround zur Korrektur von Anzeige- und Verbrauchswerten in speziellen System-Setups (ESS3).
