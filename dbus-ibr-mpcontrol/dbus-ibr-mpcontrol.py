@@ -77,8 +77,9 @@ victron_state_names = {
 
 
 # todo: factor out into common lib
-class ClientBase(ServiceHandler):
+class ClientBase(ServiceHandler, AioDbusClient):
     servicetype = "com.victronenergy.device"
+    offDefaults = {}
 
     async def wait_for_essential_paths(self):
         res = {}
@@ -91,19 +92,39 @@ class ClientBase(ServiceHandler):
                 logger.debug(f"waiting for initial {p}, got: {v}")
                 await asyncio.sleep(0.25)
                 v = await self.fetch_value(p)
+
             logger.debug(f"initial {p}: {v}")
             res[p] = v
-        return res
+
+        return self.handleOffValues(res)
+
+    def handleOffValues(self, values):
+
+        for (p, default) in self.offDefaults.items():
+            if values.get(p) == []:
+                logger.debug(f"handle default: {p}: [] -> {default}")
+                values[p] = default
+
+        return values
+
+    def update_items(self, items):
+        updated = AioDbusClient.update_items(self, items)
+        return self.handleOffValues(updated)
+
+    def update_unseen_items(self, items):
+        updated = AioDbusClient.update_unseen_items(self, items)
+        return self.handleOffValues(updated)
 
 class SystemMonitor(Monitor):
 
     def __init__(self, bus, mpcontrol):
 
         # Inverter RS
-        inverterType = type("InverterClient", (AioDbusClient, ClientBase),
-                     { "paths": { '/Mode', '/State', '/Ac/Out/L1/P' } })
+        inverterType = type("InverterClient", (ClientBase, ),
+                     { "paths": { '/Mode', '/State', '/Ac/Out/L1/P' },
+                       "offDefaults": { '/Ac/Out/L1/P': 0 } })
         # Mulitiplus 2
-        multiType = type("InverterClient", (AioDbusClient, ClientBase),
+        multiType = type("MultiClient", (ClientBase, ),
                      { "paths": { '/Mode', '/State' } })
 
         super().__init__(bus, handlers = {
