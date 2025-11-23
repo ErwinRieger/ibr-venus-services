@@ -284,7 +284,7 @@ class MPControl(AioDbusService):
 
         while True:
 
-            await asyncio.sleep(1) # todo: increase interval 
+            await asyncio.sleep(10)
 
             dt = self.endTimer - time.time()
 
