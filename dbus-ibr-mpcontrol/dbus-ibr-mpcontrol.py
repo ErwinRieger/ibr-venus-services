@@ -55,9 +55,11 @@ victron_mode_names = {
         }
 
 # To map Multiplus and Inverter RS states to strings
+state_off=0
+
 victron_state_names = {
         None: "None",
-        0:"Off",
+        state_off:"Off",
         1:"Low Power",
         2:"Fault",
         3:"Bulk",
@@ -122,10 +124,11 @@ class SystemMonitor(Monitor):
         # Inverter RS
         inverterType = type("InverterClient", (ClientBase, ),
                      { "paths": { '/Mode', '/State', '/Ac/Out/L1/P' },
-                       "offDefaults": { '/Ac/Out/L1/P': 0 } })
+                       "offDefaults": { '/Ac/Out/L1/P': 0, '/Mode': mode_off, '/State': state_off } })
         # Mulitiplus 2
         multiType = type("MultiClient", (ClientBase, ),
-                     { "paths": { '/Mode', '/State' } })
+                     { "paths": { '/Mode', '/State' },
+                       "offDefaults": { '/Mode': mode_off, '/State': state_off } })
 
         super().__init__(bus, handlers = {
             'com.victronenergy.inverter': inverterType,
@@ -140,7 +143,7 @@ class SystemMonitor(Monitor):
 
     async def serviceAdded(self, service):
 
-        logger.debug(f"service added: {service.name}")
+        logger.debug(f"service added: {service.name}, waiting for essential paths...")
 
         if service.name.startswith("com.victronenergy.inverter"):
             self.inverter = service
@@ -163,9 +166,8 @@ class SystemMonitor(Monitor):
 
         # We have to wait for some paths to become valid before
         # we can really place or sync things.
-        logger.debug("Waiting for essential paths, service: "+service.name)
         values = await service.wait_for_essential_paths()
-        logger.debug(f"initial values: {values}")
+        logger.debug(f"{service.name}: initial values: {values}")
 
         # await self.settingsCalled
 
