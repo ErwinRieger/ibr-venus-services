@@ -30,6 +30,8 @@ logger.setLevel(logging.DEBUG)
 MULTIOFFMODE = 4
 INVPOWERPATH = "/Ac/Out/L1/P"
 
+# todo: use ClientBase like in mpcontrol here...
+
 # Monitor RS6000
 class RSHandler(AioDbusClient, ServiceHandler):
     servicetype = "com.victronenergy.device"
@@ -82,7 +84,7 @@ class SystemMonitor(Monitor):
         logger.debug(f"service added: {service.name}, waiting for essential paths...")
 
         values = await service.wait_for_essential_paths()
-        logger.debug(f"initial values: {values}")
+        logger.debug(f"{service.name}: initial values: {values}")
 
         self.itemsChanged(service, values)
 
