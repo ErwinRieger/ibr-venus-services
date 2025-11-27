@@ -1,4 +1,4 @@
-import QtQuick 2
+import QtQuick 
 
 /**
  * Similar to MbItemRow but uses a Column to show several rows on the right side.
