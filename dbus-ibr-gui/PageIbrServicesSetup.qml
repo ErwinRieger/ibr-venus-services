@@ -1,4 +1,3 @@
-import QtQuick 
 import com.victron.velib 1.0
 import "utils.js" as Utils
 
@@ -10,7 +9,16 @@ MbPage {
     property MbPage rootInfo
     property MbStyle mbStyle // : MbStyle {}
 
-	model: VisibleItemModel {
+	model: Item { // VisibleItemModel durch Item ersetzen
+        // Das Item füllt die Seite aus
+        width: parent.width
+        height: childrenRect.height // Höhe passt sich dem Inhalt an
+
+        Column { // Column für das Layout verwenden
+            width: parent.width
+            spacing: 5 // Optional, um Abstand zu schaffen
+
+            // Alle ursprünglichen Kind-Elemente hier einfügen
 	    MbItemCol {
             description: qsTr("BattInfo")
             height: rootInfo.nBatt*root.mbStyle.itemHeight
@@ -19,7 +27,7 @@ MbPage {
             // VBusItem { id: multi_state; bind: multiPath+"/State" }
             // VBusItem { id: multi_inpower; bind: multiPath+multiInPath }
             // VBusItem { id: multi_outpower; bind: multiPath+"/Ac/Out/L1/P" }
-            // property int multipower: rshack ? ((multi_state.value == 0)? 0 : -(multi_inpower.value-multi_outpower.value)) : -(multi_outpower.value+multi_inpower.value)
+            // property int multipower: rshack ? ((multi_state.value == 0)? 0 : -(multi_inpower.value-multi_outpower.value)) : -(multi_outpower.value+multi_inverter.value)
 
 		    values: [
 		          Repeater {
@@ -54,7 +62,7 @@ MbPage {
             // VBusItem { id: multi_state; bind: multiPath+"/State" }
             // VBusItem { id: multi_inpower; bind: multiPath+multiInPath }
             // VBusItem { id: multi_outpower; bind: multiPath+"/Ac/Out/L1/P" }
-            // property int multipower: rshack ? ((multi_state.value == 0)? 0 : -(multi_inpower.value-multi_outpower.value)) : -(multi_outpower.value+multi_inpower.value)
+            // property int multipower: rshack ? ((multi_state.value == 0)? 0 : -(multi_inpower.value-multi_outpower.value)) : -(multi_outpower.value+multi_inverter.value)
 
             // realsoc, fakesoc, restartsoc
             // lowest-cell, cell-cutoff
@@ -145,5 +153,6 @@ MbPage {
 				// text: item.valid ? em24SwitchText(item.value) : "--"
 			}
 		}
+        }
 	}
 }
