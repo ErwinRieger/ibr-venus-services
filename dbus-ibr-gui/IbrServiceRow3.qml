@@ -15,6 +15,7 @@ MbItemCol {
     property variant multiPath: undefined
     property string multiName: "Multiplus"
     property string multiInPath: "/Ac/ActiveIn/L1/P"
+
     function discoverInverter() {
         console.log("discover inverter")
         for (var i = 0; i < DBusServices.count; i++)
@@ -25,6 +26,7 @@ MbItemCol {
             }
         console.log("discover inverter, no result")
     }
+
     function discoverMulti() {
         console.log("discover multi")
         for (var i = 0; i < DBusServices.count; i++) {
@@ -72,73 +74,73 @@ MbItemCol {
 	    }
 	    return text
     }
+
 	Component.onCompleted: {
         discoverInverter()
         discoverMulti()
 	}
 
-            property int nRows: (((rsinverterPath === undefined) ? 0:1) + ((multiPath === undefined) ? 0:1))
-            height: (nRows+1)*mbStyle.itemHeight
+    property int nRows: (((rsinverterPath === undefined) ? 0:1) + ((multiPath === undefined) ? 0:1))
+    height: (nRows+1)*mbStyle.itemHeight
+    
+    // Rs6000 inverter + multiplus in assisting mode. multiplus has his CT sensor
+    // on the rs6000 output, so it adds the rs output power to itself!
+    // To get the real output power of the multiplus, we have to subtract ac-out power
+    // from ac-in (CT) power.
+    property bool rshack: (rsinverterPath !== undefined) && (multiPath !== undefined)
+    
+    VBusItem { id: inverter_outpower; bind: rsinverterPath+"/Ac/Out/L1/P" }
+    VBusItem { id: multi_state; bind: multiPath+"/State" }
+    VBusItem { id: multi_inpower; bind: multiPath+multiInPath }
+    VBusItem { id: multi_outpower; bind: multiPath+"/Ac/Out/L1/P" }
+    property int multipower: rshack ? ((multi_state.value == 0)? 0 : -(multi_inpower.value-multi_outpower.value)) : -(multi_outpower.value+multi_inpower.value)
 
-            // Rs6000 inverter + multiplus in assisting mode. multiplus has his CT sensor
-            // on the rs6000 output, so it adds the rs output power to itself!
-            // To get the real output power of the multiplus, we have to subtract ac-out power
-            // from ac-in (CT) power.
-            property bool rshack: (rsinverterPath !== undefined) && (multiPath !== undefined)
-
-            VBusItem { id: inverter_outpower; bind: rsinverterPath+"/Ac/Out/L1/P" }
-            VBusItem { id: multi_state; bind: multiPath+"/State" }
-            VBusItem { id: multi_inpower; bind: multiPath+multiInPath }
-            VBusItem { id: multi_outpower; bind: multiPath+"/Ac/Out/L1/P" }
-            property int multipower: rshack ? ((multi_state.value == 0)? 0 : -(multi_inpower.value-multi_outpower.value)) : -(multi_outpower.value+multi_inpower.value)
-
-		    values: [
-                MbItemRow {
-		            description: qsTr("Load:")
+    values: [
+        MbItemRow {
+            description: qsTr("Load:")
+            mbStyle: IbrSmallStyle { }
+            values: [
+                MbTextBlock { 
+                    item: theSystem.acLoad.power
                     mbStyle: IbrSmallStyle { }
-			        values: [
-                        MbTextBlock { 
-                            item: theSystem.acLoad.power
-                            mbStyle: IbrSmallStyle { }
-                        }
-                    ]
-                },
-                MbItemRow {
-                    visible: (rsinverterPath === undefined ? false:true)
-		            description: qsTr("RS Inverter:")
-                    mbStyle: IbrSmallStyle { }
-	                        // property VBusItem vdiff: VBusItem { bind: battPath+"/Voltages/Diff" }
-			        values: [
-                        MbTextBlock { 
-                            VBusItem { id: inv_state; bind: rsinverterPath+"/State" }
-                            item: VBusItem { value: stateAsString(inv_state.value) }
-                            mbStyle: IbrSmallStyle { }
-                        },
-                        MbTextBlock { 
-                            item.bind: rsinverterPath+"/Ac/Out/L1/P";
-                            mbStyle: IbrSmallStyle { }
-                        }
-                    ]
-                },
-                MbItemRow {
-                    visible: (multiPath === undefined ? false:true)
-		            description: multiName
-                    mbStyle: IbrSmallStyle { }
-			        values: [
-                        MbTextBlock { 
-                            item: VBusItem { value: stateAsString(multi_state.value) }
-                            mbStyle: IbrSmallStyle { }
-                        },
-                        // MbTextBlock { 
-                            // item: VBusItem { value: "CT:"+ac_row.multictpower.toString()+"W" }
-                            // mbStyle: IbrSmallStyle { }
-                        // },
-                        MbTextBlock { 
-                            item: VBusItem { value: ac_row.multipower; unit:"W" }
-                            mbStyle: IbrSmallStyle { }
-                        }
-                    ]
                 }
-		    ]
+            ]
+        },
+        MbItemRow {
+            visible: (rsinverterPath === undefined ? false:true)
+            description: qsTr("RS Inverter:")
+            mbStyle: IbrSmallStyle { }
+            values: [
+                MbTextBlock { 
+                    VBusItem { id: inv_state; bind: rsinverterPath+"/State" }
+                    item: VBusItem { value: stateAsString(inv_state.value) }
+                    mbStyle: IbrSmallStyle { }
+                },
+                MbTextBlock { 
+                    item.bind: rsinverterPath+"/Ac/Out/L1/P";
+                    mbStyle: IbrSmallStyle { }
+                }
+            ]
+        },
+        MbItemRow {
+            visible: (multiPath === undefined ? false:true)
+            description: multiName
+            mbStyle: IbrSmallStyle { }
+            values: [
+                MbTextBlock { 
+                    item: VBusItem { value: stateAsString(multi_state.value) }
+                    mbStyle: IbrSmallStyle { }
+                },
+                // MbTextBlock { 
+                    // item: VBusItem { value: "CT:"+ac_row.multictpower.toString()+"W" }
+                    // mbStyle: IbrSmallStyle { }
+                // },
+                MbTextBlock { 
+                    item: VBusItem { value: ac_row.multipower; unit:"W" }
+                    mbStyle: IbrSmallStyle { }
+                }
+            ]
+        }
+    ]
 }
 

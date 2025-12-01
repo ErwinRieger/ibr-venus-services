@@ -4,7 +4,6 @@ MbItemCol {
     description: qsTr("Discharge")
     property variant bmsService     // our service
 
-    // property IbrSmallStyle mbStyle: IbrSmallStyle {}
     mbStyle.fontPixelSize: 14
     mbStyle.itemHeight: 23
     mbStyle.marginItemHorizontal: 2

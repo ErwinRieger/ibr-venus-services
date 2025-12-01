@@ -5,7 +5,6 @@ MbItemCol {
 
     description: qsTr("BattInfo")
 
-    // property IbrSmallStyle mbStyle: IbrSmallStyle {}
     mbStyle.fontPixelSize: 14
     mbStyle.itemHeight: 23
     mbStyle.marginItemHorizontal: 2

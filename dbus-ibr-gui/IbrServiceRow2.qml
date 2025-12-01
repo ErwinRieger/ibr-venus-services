@@ -11,8 +11,6 @@ MbItemCol {
 
     description: qsTr("Batt")
 
-    // mbStyle: IbrSmallStyle { }
-    // property IbrSmallStyle mbStyle: IbrSmallStyle {}
     mbStyle.fontPixelSize: 14
     mbStyle.itemHeight: 23
     mbStyle.marginItemHorizontal: 2
@@ -20,32 +18,26 @@ MbItemCol {
 
     height: (nBatt+1)*mbStyle.itemHeight
 
-    function ibrRepeater() {
+    values: [
+        IbrBattInfoBms {
+            bmsService: root.bmsService 
+        }
+    ]
 
-        var comp = Qt.createComponent("IbrBattInfoBms.qml");
-        if (comp.status == Component.Error) {
-                 console.log("Error loading component:", comp.errorString());
-        }
-        var obj = comp.createObject(null, { bmsService: bmsService } )
-        if (obj == null) {
-            console.log("Error creating PageIbrServices object");
-        }
-        
-        let list = [ obj ]
-        comp = Qt.createComponent("IbrBattInfoRow.qml");
+    function ibrRepeater() {
+        var comp = Qt.createComponent("IbrBattInfoRow.qml");
         if (comp.status == Component.Error) {
                  console.log("Error loading component:", comp.errorString());
         }
         for (var index = 0; index < nBatt; index++) {
-            obj = comp.createObject(null, {
+            var obj = comp.createObject(null, {
                      bindPrefix: bmsService.name,
                      description: battInfo.value[index*3+1],
                      battDevice: battInfo.value[index*3] })
-             list.push(obj)
+             values.push(obj)
         }
-        return list;
      }
     
-	 values: ibrRepeater()
+    Component.onCompleted: { ibrRepeater() }
 }
 

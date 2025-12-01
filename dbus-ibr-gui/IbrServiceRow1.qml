@@ -22,38 +22,38 @@ MbItemCol {
         return "--"
     }
 
-     VBusItem { id:mpptmode; bind: "com.victronenergy.ibrsystem/MppOperationMode" }
+    VBusItem { id:mpptmode; bind: "com.victronenergy.ibrsystem/MppOperationMode" }
 
-	 values: [
+    values: [
             MbItemRow {
 		        description: qsTr("Erzeug:")
                 mbStyle: IbrSmallStyle { }
 			    values: [
-                  MbTextBlock { 
-                      item: VBusItem { value: mpptModeAsString(mpptmode.value) }
+                    MbTextBlock { 
+                        item: VBusItem { value: mpptModeAsString(mpptmode.value) }
+                        mbStyle: IbrSmallStyle { }
+                    },
+                    MbTextBlock { 
+                      item: theSystem.pvCharger.power
                       mbStyle: IbrSmallStyle { }
-                  },
-                  MbTextBlock { 
-                    item: theSystem.pvCharger.power
-                    mbStyle: IbrSmallStyle { }
-                  },
-                  MbTextBlock { 
-                    item.bind: "com.victronenergy.ibrsystem/TotalPVYield";
-                    mbStyle: IbrSmallStyle { }
-                    item.decimals:3;
-                    item.unit: "kWh"
-                  }
+                    },
+                    MbTextBlock { 
+                      item.bind: "com.victronenergy.ibrsystem/TotalPVYield";
+                      mbStyle: IbrSmallStyle { }
+                      item.decimals:3;
+                      item.unit: "kWh"
+                    }
                 ]
             },
             MbItemRow {
 		        description: qsTr("Ertrag:")
                 mbStyle: IbrSmallStyle { }
 			    values: MbTextBlock { 
-                    item.bind: "com.victronenergy.ibrsystem/TotalPVEarnings";
-                    mbStyle: IbrSmallStyle { }
-                    item.decimals:3;
-                    item.unit: "Eur"
-                }
+                item.bind: "com.victronenergy.ibrsystem/TotalPVEarnings";
+                mbStyle: IbrSmallStyle { }
+                item.decimals:3;
+                item.unit: "Eur"
             }
-	]
+        }
+    ]
 }
