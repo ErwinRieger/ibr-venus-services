@@ -97,17 +97,12 @@ revertPatches() {
     # Use the new function to get patch files and loop through them
     getPatchFiles | while read -r patch_file; do
         # echo "doing patch: $patch_file"
-        head -2 "$patch_file" | cut -d" " -f2 | while read f rest; do
-            backup_file="${f}.ibrorig"
-            # echo $f, backup: $backup_file;
-
-            if [ -f "$f" ] && [ -f "$backup_file" ] && ! cmp "$f" "$backup_file" ; then
-                echo "Reverting: $backup_file -> $f"
-                cp "$backup_file" "$f"
-            # else
-                # echo "Info: No backup found for $f."
-            fi
-          done
+        origfile="$(patchedFileName $patch_file)"
+        backupfile="${origfile}.ibrorig"
+        if [ -f "$origfile" ] && [ -f "$backupfile" ] && ! cmp "$origfile" "$backupfile" ; then
+                echo "Reverting: $backupfile -> $origfile"
+                cp "$backupfile" "$origfile"
+        fi
     done
 }
 
@@ -141,6 +136,7 @@ if [ "$cmd" = "install" ]; then
         echo ""
         echo "*** Apply patch(es) ***"
         for pf in $patches; do
+            echo "patch: $pf"
             origfile="$(patchedFileName $pf)"
             backup="${origfile}.ibrorig"
             if [ ! -e "$backup" ]; then
@@ -149,6 +145,7 @@ if [ "$cmd" = "install" ]; then
             # else
                     # echo "backup $backup existing"
             fi
+            echo "patch -N -p0  - $pf"
             patch -N -p0  < $pf
         done    
     fi
