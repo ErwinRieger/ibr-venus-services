@@ -7,7 +7,7 @@ MbItemRow {
 			        values: [
                       MbTextBlock { 
                           VBusItem { id:cv; bind: bmsService.path("/Info/MaxChargeVoltage") }
-                          item.text: "cv "+cv.format(2)+"V"
+                          item.text: cv.valid ? "cv "+cv.format(2)+"V" : "--"
                           mbStyle: IbrSmallStyle { }
                       },
                       MbTextBlock { 
