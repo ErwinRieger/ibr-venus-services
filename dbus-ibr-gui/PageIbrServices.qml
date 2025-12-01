@@ -14,11 +14,9 @@ MbPage {
 
     model: VisibleItemModel {
 
-        // IbrServiceRow1 { bmsService: root.service; }
         IbrServiceRow1 { }
         IbrServiceRow2 { bmsService: root.service; }
-        // IbrServiceRow3 { bmsService: root.service; }
-        // IbrServiceRow4 { bmsService: root.service; }
+        IbrServiceRow3 { }
         IbrServiceDetails { bmsService: root.service; }
 
   } // visiblemodel

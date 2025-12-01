@@ -26,7 +26,7 @@ MbItemCol {
         if (comp.status == Component.Error) {
                  console.log("Error loading component:", comp.errorString());
         }
-        var obj = comp.createObject(null, { bmsService: root.bmsService } )
+        var obj = comp.createObject(null, { bmsService: bmsService } )
         if (obj == null) {
             console.log("Error creating PageIbrServices object");
         }
