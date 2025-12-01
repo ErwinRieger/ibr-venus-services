@@ -14,25 +14,13 @@ MbItemCol {
 
     values: [
 	    Repeater {
-                    model: nBatt
-                        MbItemRow {
-                            VBusItem { id: battDevice; value: battInfo.value[index*3] }
-                            VBusItem { id: battName; value: battInfo.value[index*3+1] }
-                            VBusItem { id: btId; value: battInfo.value[index*3+2] }
-                            description: battDevice.value
-                            mbStyle: IbrSmallStyle {}
-                            values: [
-                                MbTextBlock {
-                                    item: battName
-                                    mbStyle: IbrSmallStyle {}
-                                },
-                                MbTextBlock {
-                                    item: btId
-                                    mbStyle: IbrSmallStyle {}
-                                }
-                            ]
-                        }
-                    }
+            model: nBatt
+            IbrBattInfoRow {
+                battDevice: battInfo.value[index*3] // batt device
+                battName: battInfo.value[index*3+1]
+                battId: battInfo.value[index*3+2]
+            }
+        }
     ]
 }
 

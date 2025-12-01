@@ -2,7 +2,6 @@
 MbItemCol {
     id: root
     description: qsTr("Discharge")
-    // property MbStyle mbStyle // : MbStyle {}                                                                                                          
     property variant bmsService     // our service
 
     property IbrSmallStyle mbStyle: IbrSmallStyle {}
