@@ -1,4 +1,4 @@
-import QtQuick 1.1
+// import QtQuick 1.1
 import com.victron.velib 1.0
 import "utils.js" as Utils
 
@@ -26,12 +26,12 @@ MbPage {
 
     model: VisibleItemModel {
 
-        // IbrServiceRow1 { bmsService: root.servcie; }
+        // IbrServiceRow1 { bmsService: root.service; }
         IbrServiceRow1 { }
-        // IbrServiceRow2 { bmsService: root.servcie; }
-        // IbrServiceRow3 { bmsService: root.servcie; }
-        // IbrServiceRow4 { bmsService: root.servcie; }
-        IbrServiceDetails { bmsService: root.servcie; }
+        // IbrServiceRow2 { bmsService: root.service; }
+        // IbrServiceRow3 { bmsService: root.service; }
+        // IbrServiceRow4 { bmsService: root.service; }
+        IbrServiceDetails { bmsService: root.service; }
 
   } // visiblemodel
 
