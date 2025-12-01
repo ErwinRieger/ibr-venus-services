@@ -4,7 +4,8 @@ import com.victron.velib 1.0
 
 MbItemCol {
 
-            id: ac_row
+    id: ac_row
+    property variant sys: theSystem
 
     // Check available services to find rs-inverter and multiplus
     property variant rsinverterPath: undefined

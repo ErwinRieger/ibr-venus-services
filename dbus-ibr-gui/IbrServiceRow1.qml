@@ -1,6 +1,10 @@
 
 MbItemCol {
 
+    description: qsTr("PV")
+    property IbrSmallStyle mbStyle: IbrSmallStyle {}
+    property variant sys: theSystem
+
     function mpptModeAsString(mode) {
 	    switch (mode) {
 	        case 0:
@@ -13,11 +17,10 @@ MbItemCol {
         return "--"
     }
 
-		 description: qsTr("PV")
-	    property IbrSmallStyle mbStyle: IbrSmallStyle {}
-         height: 2*mbStyle.itemHeight
-         VBusItem { id:mpptmode; bind: "com.victronenergy.ibrsystem/MppOperationMode" }
-		 values: [
+     height: 2*mbStyle.itemHeight
+     VBusItem { id:mpptmode; bind: "com.victronenergy.ibrsystem/MppOperationMode" }
+
+	 values: [
             MbItemRow {
 		        description: qsTr("Erzeug:")
                 mbStyle: IbrSmallStyle { }
@@ -48,5 +51,5 @@ MbItemCol {
                     item.unit: "Eur"
                 }
             }
-		]
+	]
 }

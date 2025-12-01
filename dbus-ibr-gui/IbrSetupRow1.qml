@@ -1,5 +1,4 @@
 
-// import QtQuick 1.1
 import "utils.js" as Utils
 MbItemCol {
     id: root
@@ -14,11 +13,11 @@ MbItemCol {
 
     function ibrRepeater() {
         let list = []
-        var comp = Qt.createComponent("IbrBattInfoRow.qml");
+        var comp = Qt.createComponent("IbrBattInfoDetail.qml");
         for (var index = 0; index < nBatt; index++)
             list.push(
                 comp.createObject(root, {
-                    battDevice: battInfo.value[index*3],
+                    description: battInfo.value[index*3],
                     battName: battInfo.value[index*3+1],
                     battId: battInfo.value[index*3+2] }
                 )
@@ -27,17 +26,5 @@ MbItemCol {
     }
 
     values: ibrRepeater()
-/*
-    values: [
-	    Repeater {
-            model: nBatt
-            IbrBattInfoRow {
-                battDevice: battInfo.value[index*3] // batt device
-                battName: battInfo.value[index*3+1]
-                battId: battInfo.value[index*3+2]
-            }
-        }
-    ]
-*/
 }
 
