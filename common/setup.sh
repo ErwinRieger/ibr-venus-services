@@ -111,7 +111,7 @@ revertPatches() {
 
         if [ -f "$backup_file" ]; then
             echo "Reverting: $full_original_path"
-            mv "$backup_file" "$full_original_path"
+            cp "$backup_file" "$full_original_path"
         else
             echo "Info: No backup found for $full_original_path."
         fi
@@ -254,57 +254,3 @@ fi
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-Ausgezeichnete Idee. Die Auslagerung von wiederholtem Code in eine eigene Funktion ist ein sauberes Vorgehen und verbessert die Wartbarkeit des Skripts erheblich.
-
-```
-
-### 3. Beispiel: Angepasste `applyPatches()` Funktion
-
-So könnte Ihre bestehende Installationslogik (hier als `applyPatches` bezeichnet) ebenfalls von der neuen Funktion profitieren, um Code-Duplizierung zu vermeiden.
-
-```bash
-# (This is a hypothetical example of how the install logic could be refactored)
-applyPatches() {
-    echo "Applying patches for service in $(pwd)..."
-
-    # Use the same shared function to get the list of patch files
-    getPatchFiles | while read -r patch_file; do
-        original_basename=$(basename "${patch_file%.patch}")
-        relative_path=$(grep -F "/${original_basename}" setup/filelist | head -n 1)
-
-        if [ -z "$relative_path" ]; then
-            echo "Warning: Could not find '$original_basename' in filelist. Cannot apply patch."
-            continue
-        fi
-
-        full_original_path="/opt/victronenergy/${relative_path}"
-
-        # Backup original file if it exists and no backup has been made yet
-        if [ -f "$full_original_path" ] && [ ! -f "${full_original_path}.ibrorig" ]; then
-            echo "Backing up original file: $full_original_path"
-            cp "$full_original_path" "${full_original_path}.ibrorig"
-        fi
-
-        echo "Applying patch to: $full_original_path"
-        # Hier würde Ihr eigentlicher Patch-Befehl stehen, z.B.:
-        # patch -p1 -N --directory=/ "$full_original_path" < "$patch_file"
-    done
-
-    echo "Patching process for this service completed."
-}
-```
-
-Durch diese Aufteilung ist die Logik zum Auffinden der Patch-Dateien an einer einzigen Stelle definiert (`getPatchFiles`), was das Skript sauberer und einfacher zu warten macht
