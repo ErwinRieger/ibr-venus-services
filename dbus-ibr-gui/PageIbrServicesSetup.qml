@@ -1,4 +1,3 @@
-
 import com.victron.velib 1.0
 
 MbPage {                                                                                                                                                      
