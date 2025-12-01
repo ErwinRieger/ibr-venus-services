@@ -84,40 +84,31 @@ patchedFileName() {
 # Find all patch files in the setup directory for the current service.
 # Echos a list of files, one per line.
 getPatchFiles() {
-    $(ls setup/*.patch 2>/dev/null)
+    ls setup/*.patch 2>/dev/null
 }
 
 # Function to revert patches for the current service
 revertPatches() {
-    if [ ! -d "setup" ] || [ ! -f "setup/filelist" ]; then
-        echo "Error: This script must be run from a service directory containing a 'setup' folder with a 'filelist'."
+    if [ ! -d "setup" ]; then
+        echo "Error: This script must be run from a service directory containing a 'setup' folder."
         return 1
     fi
 
-    echo "Reverting patches for service in $(pwd)..."
-
     # Use the new function to get patch files and loop through them
     getPatchFiles | while read -r patch_file; do
-        original_basename=$(basename "${patch_file%.patch}")
-        relative_path=$(grep -F "/${original_basename}" setup/filelist | head -n 1)
+        # echo "doing patch: $patch_file"
+        head -2 "$patch_file" | cut -d" " -f2 | while read f rest; do
+            backup_file="${f}.ibrorig"
+            # echo $f, backup: $backup_file;
 
-        if [ -z "$relative_path" ]; then
-            echo "Warning: Could not find '$original_basename' in filelist. Cannot determine original path."
-            continue
-        fi
-
-        full_original_path="/opt/victronenergy/${relative_path}"
-        backup_file="${full_original_path}.ibrorig"
-
-        if [ -f "$backup_file" ]; then
-            echo "Reverting: $full_original_path"
-            cp "$backup_file" "$full_original_path"
-        else
-            echo "Info: No backup found for $full_original_path."
-        fi
+            if [ -f "$f" ] && [ -f "$backup_file" ] && ! cmp "$f" "$backup_file" ; then
+                echo "Reverting: $backup_file -> $f"
+                cp "$backup_file" "$f"
+            # else
+                # echo "Info: No backup found for $f."
+            fi
+          done
     done
-
-    echo "Revert process for this service completed."
 }
 
 ss=""
@@ -238,8 +229,8 @@ if [ "$cmd" = "install" ]; then
         fi
     fi
 elif [ "$cmd" = "revert" ]; then
-    echo "reverting patches"
-    revertPatches()
+    # echo "reverting patches"
+    revertPatches
 elif [ "$cmd" = "installall" ]; then
     dn="$(dirname $srcdir)"
     for service in $(cat $prefix//data/conf/installed-ibr-services); do
