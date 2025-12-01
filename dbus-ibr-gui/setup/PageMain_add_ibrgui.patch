@@ -1,5 +1,5 @@
-*** /home/erwin/doc/haus/alternative-energie/venus-os/venus-os-orig-v3.60/opt/victronenergy/gui/qml/PageMain.qml.orig	2025-10-28 08:06:26.747499325 +0100
---- /home/erwin/doc/haus/alternative-energie/venus-os/venus-os-orig-v3.60/opt/victronenergy/gui/qml/PageMain.qml	2025-12-01 16:12:42.555024539 +0100
+*** /opt/victronenergy/gui/qml/PageMain.qml.orig	2025-10-28 08:06:26.747499325 +0100
+--- /opt/victronenergy/gui/qml/PageMain.qml	2025-12-01 16:12:42.555024539 +0100
 ***************
 *** 154,159 ****
 --- 154,160 ----
