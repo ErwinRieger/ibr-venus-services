@@ -7,6 +7,13 @@ MbItemCol {
     id: ac_row
     property variant sys: theSystem
 
+    description: qsTr("AC")
+    // property IbrSmallStyle mbStyle: IbrSmallStyle {}
+    mbStyle.fontPixelSize: 14
+    mbStyle.itemHeight: 23
+    mbStyle.marginItemHorizontal: 2
+    mbStyle.marginItemVertical: 2
+
     // Check available services to find rs-inverter and multiplus
     property variant rsinverterPath: undefined
     property variant multiPath: undefined
@@ -74,9 +81,7 @@ MbItemCol {
         discoverMulti()
 	}
 
-		    description: qsTr("AC")
             property int nRows: (((rsinverterPath === undefined) ? 0:1) + ((multiPath === undefined) ? 0:1))
-	    property IbrSmallStyle mbStyle: IbrSmallStyle {}
             height: (nRows+1)*mbStyle.itemHeight
 
             // Rs6000 inverter + multiplus in assisting mode. multiplus has his CT sensor

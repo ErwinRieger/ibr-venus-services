@@ -5,7 +5,6 @@
 
 MbItem {
     id: root
-	editable: false
 
 	property alias description: _description.text
 	default property alias values: _values.data

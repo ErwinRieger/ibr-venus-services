@@ -2,8 +2,13 @@
 MbItemCol {
 
     description: qsTr("PV")
-    property IbrSmallStyle mbStyle: IbrSmallStyle {}
-    property variant sys: theSystem
+
+    mbStyle.fontPixelSize: 14
+    mbStyle.itemHeight: 23
+    mbStyle.marginItemHorizontal: 2
+    mbStyle.marginItemVertical: 2
+
+    height: 2*mbStyle.itemHeight
 
     function mpptModeAsString(mode) {
 	    switch (mode) {
@@ -17,7 +22,6 @@ MbItemCol {
         return "--"
     }
 
-     height: 2*mbStyle.itemHeight
      VBusItem { id:mpptmode; bind: "com.victronenergy.ibrsystem/MppOperationMode" }
 
 	 values: [
@@ -30,7 +34,7 @@ MbItemCol {
                       mbStyle: IbrSmallStyle { }
                   },
                   MbTextBlock { 
-                    item: sys.pvCharger.power
+                    item: theSystem.pvCharger.power
                     mbStyle: IbrSmallStyle { }
                   },
                   MbTextBlock { 

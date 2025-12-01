@@ -4,7 +4,12 @@ MbItemCol {
     id: root
 
     description: qsTr("BattInfo")
-    property IbrSmallStyle mbStyle: IbrSmallStyle {}
+
+    // property IbrSmallStyle mbStyle: IbrSmallStyle {}
+    mbStyle.fontPixelSize: 14
+    mbStyle.itemHeight: 23
+    mbStyle.marginItemHorizontal: 2
+    mbStyle.marginItemVertical: 2
 
     property VBusItem battInfo: VBusItem { bind: Utils.path("com.victronenergy.ibrsystem", "/Info/BattInfo") } 
     property int nBatt: battInfo.valid ? (battInfo.value.length/3) : 0

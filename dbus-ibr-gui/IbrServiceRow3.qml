@@ -1,7 +1,13 @@
 
 MbItemCol {
     description: qsTr("PV")
-    property IbrSmallStyle mbStyle: IbrSmallStyle {}
+
+    // property IbrSmallStyle mbStyle: IbrSmallStyle {}
+    mbStyle.fontPixelSize: 14
+    mbStyle.itemHeight: 23
+    mbStyle.marginItemHorizontal: 2
+    mbStyle.marginItemVertical: 2
+
     property variant sys: theSystem
 
     height: 2*mbStyle.itemHeight
