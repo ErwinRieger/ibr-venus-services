@@ -81,6 +81,45 @@ patchedFileName() {
     head -n2 "$patchfile"|cut -d" " -f2|cut -d"	" -f1|sort|head -1
 }
 
+# Find all patch files in the setup directory for the current service.
+# Echos a list of files, one per line.
+getPatchFiles() {
+    $(ls setup/*.patch 2>/dev/null)
+}
+
+# Function to revert patches for the current service
+revertPatches() {
+    if [ ! -d "setup" ] || [ ! -f "setup/filelist" ]; then
+        echo "Error: This script must be run from a service directory containing a 'setup' folder with a 'filelist'."
+        return 1
+    fi
+
+    echo "Reverting patches for service in $(pwd)..."
+
+    # Use the new function to get patch files and loop through them
+    getPatchFiles | while read -r patch_file; do
+        original_basename=$(basename "${patch_file%.patch}")
+        relative_path=$(grep -F "/${original_basename}" setup/filelist | head -n 1)
+
+        if [ -z "$relative_path" ]; then
+            echo "Warning: Could not find '$original_basename' in filelist. Cannot determine original path."
+            continue
+        fi
+
+        full_original_path="/opt/victronenergy/${relative_path}"
+        backup_file="${full_original_path}.ibrorig"
+
+        if [ -f "$backup_file" ]; then
+            echo "Reverting: $full_original_path"
+            mv "$backup_file" "$full_original_path"
+        else
+            echo "Info: No backup found for $full_original_path."
+        fi
+    done
+
+    echo "Revert process for this service completed."
+}
+
 ss=""
 ttydev="$1"
 svcsrcdir="./service"
@@ -106,7 +145,7 @@ if [ "$cmd" = "install" ]; then
         exit 1
     fi
 
-    patches="$(ls setup/*.patch 2>/dev/null)"
+    patches="$(getPatchFiles)"
     if [ -n "$patches" ]; then
         echo ""
         echo "*** Apply patch(es) ***"
@@ -198,6 +237,9 @@ if [ "$cmd" = "install" ]; then
             fi
         fi
     fi
+elif [ "$cmd" = "revert" ]; then
+    echo "reverting patches"
+    revertPatches()
 elif [ "$cmd" = "installall" ]; then
     dn="$(dirname $srcdir)"
     for service in $(cat $prefix//data/conf/installed-ibr-services); do
@@ -225,3 +267,44 @@ fi
 
 
 
+Ausgezeichnete Idee. Die Auslagerung von wiederholtem Code in eine eigene Funktion ist ein sauberes Vorgehen und verbessert die Wartbarkeit des Skripts erheblich.
+
+```
+
+### 3. Beispiel: Angepasste `applyPatches()` Funktion
+
+So könnte Ihre bestehende Installationslogik (hier als `applyPatches` bezeichnet) ebenfalls von der neuen Funktion profitieren, um Code-Duplizierung zu vermeiden.
+
+```bash
+# (This is a hypothetical example of how the install logic could be refactored)
+applyPatches() {
+    echo "Applying patches for service in $(pwd)..."
+
+    # Use the same shared function to get the list of patch files
+    getPatchFiles | while read -r patch_file; do
+        original_basename=$(basename "${patch_file%.patch}")
+        relative_path=$(grep -F "/${original_basename}" setup/filelist | head -n 1)
+
+        if [ -z "$relative_path" ]; then
+            echo "Warning: Could not find '$original_basename' in filelist. Cannot apply patch."
+            continue
+        fi
+
+        full_original_path="/opt/victronenergy/${relative_path}"
+
+        # Backup original file if it exists and no backup has been made yet
+        if [ -f "$full_original_path" ] && [ ! -f "${full_original_path}.ibrorig" ]; then
+            echo "Backing up original file: $full_original_path"
+            cp "$full_original_path" "${full_original_path}.ibrorig"
+        fi
+
+        echo "Applying patch to: $full_original_path"
+        # Hier würde Ihr eigentlicher Patch-Befehl stehen, z.B.:
+        # patch -p1 -N --directory=/ "$full_original_path" < "$patch_file"
+    done
+
+    echo "Patching process for this service completed."
+}
+```
+
+Durch diese Aufteilung ist die Logik zum Auffinden der Patch-Dateien an einer einzigen Stelle definiert (`getPatchFiles`), was das Skript sauberer und einfacher zu warten macht
