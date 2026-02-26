@@ -81,6 +81,31 @@ patchedFileName() {
     head -n2 "$patchfile"|cut -d" " -f2|cut -d"	" -f1|sort|head -1
 }
 
+# Find all patch files in the setup directory for the current service.
+# Echos a list of files, one per line.
+getPatchFiles() {
+    ls setup/*.patch 2>/dev/null
+}
+
+# Function to revert patches for the current service
+revertPatches() {
+    if [ ! -d "setup" ]; then
+        echo "Error: This script must be run from a service directory containing a 'setup' folder."
+        return 1
+    fi
+
+    # Use the new function to get patch files and loop through them
+    getPatchFiles | while read -r patch_file; do
+        # echo "doing patch: $patch_file"
+        origfile="$(patchedFileName $patch_file)"
+        backupfile="${origfile}.ibrorig"
+        if [ -f "$origfile" ] && [ -f "$backupfile" ] && ! cmp "$origfile" "$backupfile" ; then
+                echo "Reverting: $backupfile -> $origfile"
+                cp "$backupfile" "$origfile"
+        fi
+    done
+}
+
 ss=""
 ttydev="$1"
 svcsrcdir="./service"
@@ -106,11 +131,12 @@ if [ "$cmd" = "install" ]; then
         exit 1
     fi
 
-    patches="$(ls setup/*.patch 2>/dev/null)"
+    patches="$(getPatchFiles)"
     if [ -n "$patches" ]; then
         echo ""
         echo "*** Apply patch(es) ***"
         for pf in $patches; do
+            echo "patch: $pf"
             origfile="$(patchedFileName $pf)"
             backup="${origfile}.ibrorig"
             if [ ! -e "$backup" ]; then
@@ -119,6 +145,7 @@ if [ "$cmd" = "install" ]; then
             # else
                     # echo "backup $backup existing"
             fi
+            echo "patch -N -p0  - $pf"
             patch -N -p0  < $pf
         done    
     fi
@@ -198,6 +225,9 @@ if [ "$cmd" = "install" ]; then
             fi
         fi
     fi
+elif [ "$cmd" = "revert" ]; then
+    # echo "reverting patches"
+    revertPatches
 elif [ "$cmd" = "installall" ]; then
     dn="$(dirname $srcdir)"
     for service in $(cat $prefix//data/conf/installed-ibr-services); do
@@ -207,19 +237,6 @@ elif [ "$cmd" = "installall" ]; then
 else
     echo "Error, cmd $cmd not implemented."
 fi
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

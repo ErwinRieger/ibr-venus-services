@@ -1,4 +1,3 @@
-import QtQuick 
 
 /**
  * Similar to MbItemRow but uses a Column to show several rows on the right side.
@@ -6,7 +5,6 @@ import QtQuick
 
 MbItem {
     id: root
-	editable: false
 
 	property alias description: _description.text
 	default property alias values: _values.data

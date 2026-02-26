@@ -1,16 +1,6 @@
---- /opt/victronenergy/gui/qml/PageMain.qml.orig	2025-11-01 16:38:36.668213844 +0100
-+++ /opt/victronenergy/gui/qml/PageMain.qml	2025-11-01 16:38:45.584284924 +0100
-@@ -149,11 +149,17 @@
- 		PageGenset {}
- 	}
- 
-+	Component {
-+		id: ibrservicesPage
-+		PageIbrServices {}
-+	}
-+
- 	function addService(service)
- 	{
+--- /opt/victronenergy/gui/qml/PageMain.qml.orig	2025-10-28 08:06:26.747499325 +0100
++++ /opt/victronenergy/gui/qml/PageMain.qml	2025-12-01 16:12:42.555024539 +0100
+@@ -154,6 +154,7 @@
  		var name = service.name
  
  		var page
@@ -18,12 +8,14 @@
  		switch(service.type)
  		{
  		case DBusService.DBUS_SERVICE_MULTI:
-@@ -162,6 +168,8 @@
+@@ -162,6 +163,10 @@
  		case DBusService.DBUS_SERVICE_MULTI_RS:
  			return;
  		case DBusService.DBUS_SERVICE_BATTERY:
-+		    if (name == "com.victronenergy.battery.ibrbms")
-+		        deviceList.append(service, ibrservicesPage.createObject(root, {service: service, bindPrefix: service.name}))
++		    if (name == "com.victronenergy.battery.ibrbms") {
++                var comp = Qt.createComponent("PageIbrServices.qml");
++		        deviceList.append(service, comp.createObject(root, {service: service, bindPrefix: service.name}))
++            }
  			page = batteryPage
  			break;
  		case DBusService.DBUS_SERVICE_SOLAR_CHARGER:
