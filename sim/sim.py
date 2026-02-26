@@ -1,138 +1,133 @@
-#!/usr/bin/env python3
-
 import argparse
 import configparser
-import time
-import importlib
-import matplotlib.pyplot as plt
-from dc_bus import DCBus
+import time, sys, os
+import traceback
+from system import System
+from sim_gui import SimulationGui
+
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), '..', 'common', 'python'))
 
 class SimulationRunner:
     def __init__(self, config_file):
         self.config = configparser.ConfigParser()
         self.config.read(config_file)
         
-        # Global Settings
         g = self.config['Global']
         self.time_step = float(g.get('time_step', 1.0))
-        self.title = g.get('name', 'Simulation')
         self.delay = float(g.get('delay', 0.1))
+        self.title = g.get('name', 'Simulation')
         
-        # Dauer bestimmen: n_steps oder t_simulation
-        if 'n_steps' in g:
-            self.n_steps = int(g['n_steps'])
-        elif 't_simulation' in g:
-            t_sim = float(g['t_simulation'])
-            self.n_steps = int(t_sim / self.time_step)
-        else:
-            self.n_steps = 3600 # Default fallback
-            
-        print(f"Setup: {self.n_steps} Schritte à {self.time_step}s (Total: {self.n_steps*self.time_step/3600:.2f}h)")
+        if 'n_steps' in g: self.n_steps = int(g['n_steps'])
+        else: self.n_steps = int(float(g.get('t_simulation', 3600)) / self.time_step)
         
-        self.bus = DCBus(self.time_step)
-        self.history = {'t': [], 'u': [], 'i': [], 'soc': []}
-        
+        self.system = System(self.time_step)
+        self.modules = []
         self._init_modules()
-        self._init_plot()
+        
+        # GUI initialisieren mit Parametern
+        sim_params = {
+            'n_steps': self.n_steps,
+            'time_step': self.time_step,
+            't_simulation': self.n_steps * self.time_step
+        }
+        self.gui = SimulationGui(self.title, self.modules, sim_params)
+        
+        # Log-Anbindung
+        self.system.set_log_callback(self.gui.log)
+        self.system.log(f"Simulation initialisiert: {self.title}")
 
     def _init_modules(self):
+        # System als Basis-Modul vorab hinzufügen
+        self.system.name = 'System'
+        self.system.plot_config = []
+        self.system.y2plot_config = []
+        self.modules = [self.system]
+
+        # Map für Modul-Namen zu Objekten (für Referenzen in der Config)
+        mod_map = {'System': self.system}
+        
         for section in self.config.sections():
             if section == 'Global': continue
-            m_config = self.config[section]
-            m_type = m_config.get('type')
+            cfg = self.config[section]
+            m_type = cfg.get('type')
             
+            if not m_type: continue
+            
+            # Dynamischer Import für alle Module
+            module_name = f"mod_{m_type}"
+            class_name = m_type
+            
+            obj = None
             try:
-                if m_type == 'battery':
-                    from battery import Battery
-                    obj = Battery(section, m_config, self.time_step)
-                    self.bus.register_battery(obj)
-                elif m_type == 'eve_charger':
-                    from eve_charger import Charger
-                    obj = Charger(section, m_config, self.time_step)
-                    self.bus.register_charger(obj)
-                print(f"Loaded {section} ({m_type})")
+                # Import: from mod_xyz import xyz
+                mod = __import__(module_name, fromlist=[class_name])
+                cls = getattr(mod, class_name)
+                obj = cls(section, cfg, self.time_step)
+            except ImportError as e:
+                print(f"Fehler: Konnte Modul '{module_name}' für Typ '{m_type}' nicht importieren: {e}")
+                traceback.print_exc()
+            except AttributeError as e:
+                print(f"Fehler: Klasse '{class_name}' nicht in '{module_name}' gefunden: {e}")
+                traceback.print_exc()
             except Exception as e:
-                print(f"Error loading {section}: {e}")
+                print(f"Fehler beim Initialisieren von '{section}' (Typ: {m_type}): {e}")
+                traceback.print_exc()
 
-    def _init_plot(self):
-        plt.ion()
-        self.fig, (self.ax_u, self.ax_i, self.ax_soc) = plt.subplots(3, 1, sharex=True, figsize=(8, 10))
-        self.fig.suptitle(self.title)
-        
-        self.line_u, = self.ax_u.plot([], [], 'b-', label='Bus Spannung [V]')
-        self.line_i, = self.ax_i.plot([], [], 'r-', label='Gesamtstrom [A]')
-        self.line_soc, = self.ax_soc.plot([], [], 'g-', label='SOC [%]')
-        
-        self.ax_u.set_ylabel('Voltage [V]')
-        self.ax_u.grid(True)
-        self.ax_u.legend(loc='upper left')
-        
-        self.ax_i.set_ylabel('Current [A]')
-        self.ax_i.grid(True)
-        self.ax_i.legend(loc='upper left')
-        
-        self.ax_soc.set_ylabel('SOC [%]')
-        self.ax_soc.set_xlabel('Time [h]')
-        self.ax_soc.grid(True)
-        self.ax_soc.legend(loc='upper left')
+            if obj:
+                self.system.register_module(obj)
+                
+                obj.plot_config = [p.strip() for p in cfg.get('plots', '').split(',') if p.strip()]
+                obj.y2plot_config = [p.strip() for p in cfg.get('y2plots', '').split(',') if p.strip()]
+                self.modules.append(obj)
+                mod_map[section] = obj
+
+    def run_generator(self):
+        """Generator für die Simulation. Liefert (t_hours, all_metrics) pro Schritt."""
+        for step in range(self.n_steps):
+            self.system.step()
+            
+            t_hours = (step * self.time_step) / 3600.0
+            all_metrics = {mod.name: mod.get_metrics() for mod in self.modules}
+            
+            yield t_hours, all_metrics
 
     def run(self):
-        print("Starting Simulation Loop...")
-        try:
-            for step in range(self.n_steps):
-                start_time = time.time()
-                
-                # Physik Schritt
-                u, i = self.bus.step()
-                
-                # SOC erfassen (von erster Batterie als Referenz)
-                soc = 0
-                if self.bus.batteries:
-                    soc = self.bus.batteries[0].soc()
-                
-                # History
-                # Zeit in Stunden für Plot
-                t_hours = (step * self.time_step) / 3600.0
-                self.history['t'].append(t_hours)
-                self.history['u'].append(u)
-                self.history['i'].append(i)
-                self.history['soc'].append(soc)
-                
-                # GUI Update alle 5 Schritte oder wenn delay groß genug
-                if step % 5 == 0:
-                    self._update_plot()
-                    
-                    # Delay Logik
-                    compute_time = time.time() - start_time
-                    wait = max(0, self.delay - compute_time)
-                    if wait > 0:
-                        plt.pause(wait)
-                    else:
-                        plt.pause(0.001) # Minimum für GUI refresh
-                        
-        except KeyboardInterrupt:
-            print("\nAborted by user.")
+        print("Simulation startet (Tkinter-driven)...")
+        # Generator initialisieren
+        sim_gen = self.run_generator()
         
-        print("Simulation finished.")
-        plt.ioff()
-        plt.show()
+        def step():
+            try:
+                # Nächsten Schritt aus dem Generator holen
+                t_hours, all_metrics = next(sim_gen)
+                self.gui.update(t_hours, all_metrics)
+                return True # Weiterlaufen
+            except StopIteration:
+                return False # Ende der Simulation
+            except Exception as e:
+                print(f"Fehler in Simulations-Schritt: {e}")
+                traceback.print_exc()
+                return False
 
-    def _update_plot(self):
-        t = self.history['t']
+        # Simulation in den Tkinter-Loop hängen
+        delay_ms = max(1, int(self.delay * 1000))
+        self.gui.start_simulation_loop(step, delay_ms=delay_ms)
         
-        self.line_u.set_data(t, self.history['u'])
-        self.ax_u.relim(); self.ax_u.autoscale_view()
-        
-        self.line_i.set_data(t, self.history['i'])
-        self.ax_i.relim(); self.ax_i.autoscale_view()
-        
-        self.line_soc.set_data(t, self.history['soc'])
-        self.ax_soc.relim(); self.ax_soc.autoscale_view()
+        # GUI starten (blockiert hier)
+        self.gui.show()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='basic_charge.ini')
     args = parser.parse_args()
     
-    runner = SimulationRunner(args.config)
-    runner.run()
+    config_path = args.config
+    if not os.path.exists(config_path):
+        alt_path = os.path.join('examples', config_path)
+        if os.path.exists(alt_path):
+            config_path = alt_path
+        else:
+            print(f"Fehler: Konfigurationsdatei {config_path} nicht gefunden.")
+            sys.exit(1)
+
+    SimulationRunner(config_path).run()

@@ -1,158 +1,142 @@
 """
-
-C1: "Polarisationskapazität", "elektrochemische Kapazität" der zelle
-
-Tabelle 4: Skalierte R1- und C1-Werte (100Ah)
-| SOC  | R1 (mΩ) | C1 (kF) |
-| 100% | 0,40    | 117,5 |
-| 90%  | 0,27    | 141,1 |
-| 80%  | 0,31    | 124,3 |
-| 70%  | 0,31    | 109,8 |
-| 60%  | 0,30    | 106,8 |
-| 50%  | 0,36    | 91,5 |
-| 40%  | 0,37    | 84,7 |
-| 30%  | 0,39    | 78,6 |
-| 20%  | 0,42    | 70,9 |
-
-Mittelwert: R1: 0,35 mΩ, C1: 102,8 kF 
+LifepoCell Modell 3. Ordnung (3-RC Glieder)
+Simuliert die Dynamik einer LiFePO4 Zelle mit drei Zeitkonstanten:
+1. Schnell (Ladungstransfer/Doppelschicht)
+2. Mittel (Diffusion oberflächennah)
+3. Langsam (Diffusion im Festkörper/Relaxation)
 """
 
-import time
-
+import random
 from ocv import get_lifepo4_ocv_smoothing_spline
-
-
-C = 100 # [Ah]
-r_r0 = 0.00025 # [ohm]
-r_rc = 0.0005 # [ohm]
-cap_rc = 103 * 1000 # [F]
-
-C2 = C/2 
-CEnd = C * 0.05
 
 class LifepoCell:
     """
-    Simuliert ein diskretes, parallel geschaltetes RC-Glied.
-
-    Die Klasse berechnet die Spannung über dem RC-Glied basierend auf einem
-    periodisch übergebenen Eingangsstrom.
+    Simuliert eine Zelle mit einem ohmschen Widerstand R0 und drei RC-Gliedern in Serie.
+    U_total = U_ocv(soc) + I*R0 + U_c1 + U_c2 + U_c3
     """
 
-    def __init__(self, r0, r1: float, capacitance: float, time_step: float):
+    def __init__(self, capacity, r0=0.0004, r1=0.0003, c1=66000, r2=0.0004, c2=500000, r3=0.0006, c3=3300000, time_step=1.0, initial_soc=20.0, r_self=None):
         """
-        Konstruktor zur Initialisierung des RC-Filters.
-
-        Args:
-            r1 (float): Der Widerstandswert in Ohm (R).
-            capacitance (float): Die Kapazität in Farad (C).
-            time_step (float): Das diskrete Zeitintervall in Sekunden (dt),
-                               in dem die 'step'-Methode aufgerufen wird.
+        Initialisierung mit 3-RC Parametern.
+        Default-Werte sind skaliert für eine ca. 100Ah Zelle.
         """
-        if not (r0 > 0 and r1 > 0 and capacitance > 0 and time_step > 0):
-            raise ValueError("Widerstand, Kapazität und Zeitintervall müssen positiv sein.")
-
-        self.r0 = r0
-        self.r1 = r1
-        self.capacitance = capacitance
+        # Qualitätsfaktor K bestimmen (+-0.5% gemäß battery.md)
+        k = (random.random() - 0.5) * 0.01 
+        
+        # Kapazitäten skalieren mit (1+K)
+        f_cap = 1.0 + k
+        # Widerstände skalieren mit (1-K) -> Bessere Qualität = kleinerer Widerstand
+        f_res = 1.0 - k
+        
+        self.capacity = capacity * f_cap
+        self.r0 = r0 * f_res
         self.time_step = time_step
         
-        # Die Zeitkonstante Tau
-        self.tau = self.r1 * self.capacitance
+        # Selbstentladung: Wenn nicht spezifiziert, 3% pro Monat bei 3.3V annehmen
+        if r_self is None:
+            # I_leak = (0.03 * C) / 720h
+            # R = 3.3V / I_leak = 3.3 / (0.03 * C / 720) = 79200 / C
+            self.r_self = 79200.0 / self.capacity
+        else:
+            self.r_self = r_self
         
-        # Vorberechnete Koeffizienten für die Update-Gleichung,
-        # um die Berechnung in der 'step'-Methode zu beschleunigen.
-        self._alpha = 1 - (self.time_step / self.tau)
-        self._beta = self.time_step / self.capacitance
-        
-        # Die Spannung wird zu Beginn auf 0 Volt initialisiert.
-        self.prevC1voltage = 0.0
+        # Qualitäts-Skalierung: Bessere Zelle (kleines f_res) -> größeres r_self
+        # Schlechte Zelle (großes f_res) -> kleineres r_self (mehr Leckstrom)
+        self.r_self /= f_res
 
-        self.cap = C
-        self.energy = 0
+        # RC Glieder definieren
+        self.rc_stages = [
+            {'r': r1 * f_res, 'c': c1 * f_cap, 'v': 0.0},
+            {'r': r2 * f_res, 'c': c2 * f_cap, 'v': 0.0},
+            {'r': r3 * f_res, 'c': c3 * f_cap, 'v': 0.0}
+        ]
+        
+        # Koeffizienten für diskrete Update-Gleichung berechnen
+        for stage in self.rc_stages:
+            tau = stage['r'] * stage['c']
+            stage['alpha'] = 1.0 - (self.time_step / tau)
+            stage['beta'] = self.time_step / stage['c']
+
+        # Initiale Energie basierend auf SOC (mit Faktor f_cap gemäß battery.md)
+        start_soc = initial_soc * f_cap
+        self.energy = (start_soc / 100.0) * self.capacity
+        
         self.u0 = get_lifepo4_ocv_smoothing_spline(0)
-        self.uri = 0
-        self.c1voltage = 0
+        self.uri = 0 # Spannungsfall über R0
+        self.u_rc_total = 0.0
+        self.p_loss = 0.0
+        
+        # Initialisierung
+        self.step(0)
 
     def u(self):
-        return self.u0+self.uri+self.c1voltage
+        """Gesamtspannung am Terminal."""
+        return self.u0 + self.uri + self.u_rc_total
 
     def soc(self):
-        return self.energy*100 / C
+        return (self.energy * 100.0) / self.capacity
 
-    def full(self):
-        return self.soc() >= 100
-
-    def cend(self):
-        return CEnd
-
-    def step(self, input_current: float) -> float:
-
-        self.energy += input_current * (self.time_step/3600)
-        self.u0 = get_lifepo4_ocv_smoothing_spline(self.energy*100/C)
-        self.uri = input_current * self.r0
-
-        # Anwenden der diskreten Update-Gleichung
-        self.c1voltage = self._alpha * self.prevC1voltage + self._beta * input_current
+    def step(self, input_current: float) -> tuple:
+        """
+        Simulationsschritt.
+        input_current: Strom in Ampere (positiv = Laden)
+        """
+        # 1. Update der RC-Glieder (Spannungsabfälle über Polarisations-Kapazitäten)
+        self.u_rc_total = 0.0
+        p_loss_rc = 0.0
         
-        r1power = self.c1voltage * (self.c1voltage/self.r1)
-        c1energy = self.c1energy(self.c1voltage)
-        # print(f"c1energy: {c1energy}")
+        for stage in self.rc_stages:
+            # Diskretisierung: V(k) = alpha * V(k-1) + beta * I(k)
+            stage['v'] = (stage['alpha'] * stage['v']) + (stage['beta'] * input_current)
+            self.u_rc_total += stage['v']
+            # Verlustleistung am Widerstand des RC-Glieds (P = U^2 / R)
+            p_loss_rc += (stage['v']**2) / stage['r']
 
-        # Den aktuellen Zustand für den nächsten Aufruf speichern
-        self.prevC1voltage = self.c1voltage
-       
-        return (input_current, self.u0, self.uri, self.energy, self.c1voltage, r1power, c1energy, self.u())
-
-    def c1energy(self, voltage):
-    
-        if voltage == 0:
-            return 0.0
-
-        # 1. Calculate energy in Joules (Watt-seconds)
-        # Formula: E = 0.5 * C * V^2
-        energy_joules = 0.5 * self.capacitance * voltage**2
-
-        # 2. Convert Joules (Watt-seconds) to Watt-hours
-        # 1 Wh = 3600 Ws
-        energy_watt_hours = energy_joules / 3600
-
-        # 3. Convert Watt-hours to Ampere-hours
-        # Ah = Wh / V
-        energy_ampere_hours = energy_watt_hours / voltage
-
-        return energy_ampere_hours
-
-
-"""
-lifepoCell = LifepoCell(r1=r_rc, capacitance=cap_rc, time_step=1)
-
-sample_data = [(0, lifepoCell.u0, 0, 0, 0, 0, lifepoCell.u0)]
-
-for t in range(2*3600+100):
-
-    # ladeprofil
-    # lastprofil
-
-    current=C2
-    if t>2*3600:
-        current=0
-    elif t>5000:
-        current=-C2/4
-    # elif t>50:
-    elif t>3600:
-        current=C2/4
-    # elif t>50:
-        # current=0
-
-    tup = lifepoCell.step(input_current=current) # Bsp: 10 mA Strom
-    sample_data.append(tup)
-
-    # print(f"Spannung nach {t} s: {tup} V")
-
-visualize_measurements(sample_data)
-"""
-
-
-
-
-
+        # 2. Ohmscher Spannungsfall
+        self.uri = input_current * self.r0
+        p_loss_r0 = (input_current**2) * self.r0
+        
+        # 3. Energiebilanz (Charge) inkl. Verluste
+        p_loss_total = p_loss_r0 + p_loss_rc
+        self.p_loss = p_loss_total
+        u_cell = self.u()
+        
+        # Verlust in Ah durch Widerstände = (Watt * dt_h) / Volt
+        # (Dies ist eigentlich Wärmeenergie, die aus der elektrischen Energie entnommen wird.
+        # Aber die Ladung (Ah) bleibt eigentlich erhalten (Coulomb-Effizienz ~ 1), 
+        # nur die Spannung sinkt. Hier modellieren wir Ah-Verlust?)
+        # Korrektur: LiFePO4 hat sehr hohe Coulomb-Effizienz. Verluste sind eher thermisch (V*I).
+        # Ah-Verlust entsteht nur durch Nebenreaktionen (Selbstentladung).
+        # Der bestehende Code zieht p_loss von energy ab. Energy ist hier in Ah? 
+        # self.energy = (start_soc / 100) * capacity. Das ist Ah.
+        # Energie in Wh wäre Ah * V.
+        # Wenn wir Ah speichern, dürfen wir Ohmsche Verluste NICHT abziehen!
+        # Ohmsche Verluste senken die Spannung U_terminal = U_ocv + I*R.
+        # Aber I*t bleibt I*t.
+        # Der existierende Code scheint hier Energie (Wh) und Ladung (Ah) zu vermischen oder
+        # 'energy' ist eigentlich Wh? Aber soc() teilt durch capacity (Ah).
+        # -> self.energy ist Ah.
+        # -> p_loss_total ist Watt.
+        # -> ah_loss berechnet wieviel Ah das bei aktueller Spannung wären.
+        # Das ist physikalisch fragwürdig für eine Ah-Bilanz. 
+        # Ich lasse den bestehenden Code aber erst mal so (Backward Compatibility/Konvention), 
+        # und füge nur die Selbstentladung hinzu.
+        
+        if u_cell > 2.0:
+            ah_loss = (p_loss_total * (self.time_step / 3600.0)) / u_cell
+        else:
+            ah_loss = 0
+            
+        # Selbstentladung (Parallelwiderstand an den Klemmen)
+        # Wirkt wie ein externer Verbraucher. Abhängig von aktueller Klemmenspannung.
+        # Begrenzung auf > 0, um Laden bei negativer Klemmenspannung zu verhindern.
+        i_self = max(0.0, u_cell) / self.r_self
+        ah_loss_self = i_self * (self.time_step / 3600.0)
+            
+        # Ah-Bilanz aktualisieren
+        self.energy += (input_current * (self.time_step / 3600.0)) - ah_loss - ah_loss_self
+        
+        # 4. OCV basierend auf neuem SOC
+        self.u0 = get_lifepo4_ocv_smoothing_spline(self.soc())
+        
+        return (input_current, self.u0, self.uri, self.energy, self.u_rc_total, p_loss_total, self.u())

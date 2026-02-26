@@ -183,7 +183,7 @@ def get_lifepo4_ocv_smoothing_spline(soc: float) -> float:
     Returns:
       float: Die angenäherte Ruhespannung (Uoc) in Volt.
     """
-    soc = np.clip(soc, 0, 100)
+    # soc = np.clip(soc, 0, 100)
     # Die erstellte Spline-Instanz kann direkt wie eine Funktion aufgerufen werden.
     return smoothing_spline(soc).item()
 
