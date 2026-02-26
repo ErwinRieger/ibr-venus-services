@@ -52,3 +52,23 @@ def saveAvg(l):
     if l:
         return sum(l) / len(l)
     return 0
+
+class expfilter(object):
+    value = 0
+    k = 0
+
+    def __init__(self, iv, k, minvalue=None, maxvalue=None):
+
+        self.value = iv
+        self.k = k
+        self.minvalue = minvalue
+        self.maxvalue = maxvalue
+
+    def filter(self, value):
+        self.value = self.k*value + (1.0-self.k)*self.value
+        if self.minvalue != None:
+            self.value = max(self.minvalue, self.value)
+        if self.maxvalue != None:
+            self.value = min(self.maxvalue, self.value)
+
+
