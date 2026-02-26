@@ -42,7 +42,7 @@ Für das Klonen via Git (SSH-Zugang zum Gerät erforderlich):
 
 .. code-block:: bash
 
-   git clone https://github.com/ErwinRieger/ibr-venus-services.git /data/ibr-venus-services
+   git clone --recurse-submodules https://github.com/ErwinRieger/ibr-venus-services.git /data/ibr-venus-services
 
 2. Manuelle Installation der Dienste
 ------------------------------------
