@@ -33,7 +33,29 @@ Veröffentlichte Dienste
 Installation
 ============
 
-1. Klonen des Repositorys
+1. Voraussetzungen (Linux-Pakete)
+--------------------------------
+
+Vor der Installation der Dienste müssen einige Pakete auf dem Venus OS System installiert werden.
+
+*   **git**: Wird benötigt, um das Repository direkt auf das Gerät zu klonen und um zukünftige Updates einfach einspielen zu können.
+*   **python3-pip**: Wird benötigt, um zusätzliche Python-Bibliotheken zu installieren, die nicht standardmäßig im Venus OS enthalten sind.
+
+.. code-block:: bash
+
+   opkg update
+   opkg install git python3-pip
+
+Zusätzlich werden folgende Python-Bibliotheken benötigt, die via ``pip3`` installiert werden:
+
+*   **python-statemachine**: Wird für die Zustandssteuerung (Lade-Algorithmus) im Dienst ``dbus-ibr-bms`` verwendet.
+*   **pydbus**: Ermöglicht eine vereinfachte DBus-Kommunikation für den Dienst ``dbus-ibr-neeycontrol``.
+
+.. code-block:: bash
+
+   pip3 install python-statemachine pydbus
+
+2. Klonen des Repositorys
 --------------------------
 
 Zuerst müssen die Quelldateien auf das Venus OS-Gerät in das Verzeichnis ``/data`` kopiert werden. Dies kann entweder durch Klonen des Git-Repositorys oder durch das Herunterladen und Entpacken einer ZIP-Datei geschehen.
@@ -44,7 +66,7 @@ Für das Klonen via Git (SSH-Zugang zum Gerät erforderlich):
 
    git clone --recurse-submodules https://github.com/ErwinRieger/ibr-venus-services.git /data/ibr-venus-services
 
-2. Manuelle Installation der Dienste
+3. Manuelle Installation der Dienste
 ------------------------------------
 
 Jeder Dienst kann einzeln installiert werden. Führen Sie dazu das ``setup.sh``-Skript im Verzeichnis des jeweiligen Dienstes aus.
@@ -55,7 +77,7 @@ Beispiel für die Installation des ``dbus-ibr-system``-Dienstes:
 
    sh /data/ibr-venus-services/dbus-ibr-system/setup.sh install
 
-3. Automatisierte Installation (Optional)
+4. Automatisierte Installation (Optional)
 -----------------------------------------
 
 Um eine definierte Liste von Diensten automatisch – zum Beispiel bei jedem Systemstart – zu installieren, kann der ``installall``-Befehl genutzt werden.
