@@ -246,7 +246,10 @@ class Felicity(Battery):
                 try:
                     cell_volts = unpack_from(">H", cell_volt_data, c * 2)
                     if len(cell_volts) != 0:
-                        self.cells[c].voltage = cell_volts[0] / 1000
+                        v = cell_volts[0] / 1000
+                        self.cells[c].voltage = v
+                        self.cell_max_voltage = max(v, self.cell_max_voltage)
+                        self.cell_min_voltage = min(v, self.cell_min_voltage)
                 except struct.error:
                     self.cells[c].voltage = 0
         return True

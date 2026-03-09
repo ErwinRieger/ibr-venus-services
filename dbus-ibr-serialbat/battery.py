@@ -128,6 +128,9 @@ class Battery(object):
         # charging/balancing
         self.throttling = None # xxx remove
 
+        self.cell_max_voltage = 0
+        self.cell_min_voltage = 99
+
     def test_connection(self):
         # Each driver must override this function to test if a connection can be made
         # return false when fail, true if successful
@@ -158,28 +161,42 @@ class Battery(object):
         return None
 
     def get_min_cell_voltage(self):
-        min_voltage = None
-        if hasattr(self, 'cell_min_voltage'):
-            min_voltage = self.cell_min_voltage
-
-        if min_voltage is None:
-            try:
-                min_voltage = min(c.voltage for c in self.cells if c.voltage is not None)
-            except ValueError:
-                pass
-        return min_voltage
+        return self.cell_min_voltage
 
     def get_max_cell_voltage(self):
-        max_voltage = None
-        if hasattr(self, 'cell_max_voltage'):
-            max_voltage = self.cell_max_voltage
+        return self.cell_max_voltage
 
-        if max_voltage is None:
-            try:
-                max_voltage = max(c.voltage for c in self.cells if c.voltage is not None)
-            except ValueError:
-                pass
-        return max_voltage
+    def get_min_cell(self):
+        min_voltage = 9999
+        min_cell = None
+        if len(self.cells) == 0 and hasattr(self, 'cell_min_no'):
+            return self.cell_min_no
+
+        for c in range(min(len(self.cells), self.cell_count)):
+            if self.cells[c].voltage is not None and min_voltage > self.cells[c].voltage:
+                min_voltage = self.cells[c].voltage
+                min_cell = c
+        return min_cell
+
+    def get_max_cell(self):
+        max_voltage = 0
+        max_cell = None
+        if len(self.cells) == 0 and hasattr(self, 'cell_max_no'):
+            return self.cell_max_no
+
+        for c in range(min(len(self.cells), self.cell_count)):
+            if self.cells[c].voltage is not None and max_voltage < self.cells[c].voltage:
+                max_voltage = self.cells[c].voltage
+                max_cell = c
+        return max_cell
+
+    def get_min_cell_desc(self):
+        cell_no = self.get_min_cell()
+        return cell_no if cell_no is None else 'C' + str(cell_no + 1)
+
+    def get_max_cell_desc(self):
+        cell_no = self.get_max_cell()
+        return cell_no if cell_no is None else 'C' + str(cell_no + 1)
 
     def get_temp(self):
         return sum(self.temperatures) / len(self.temperatures)

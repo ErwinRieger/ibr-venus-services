@@ -157,6 +157,7 @@ class IbrEssService(AioDbusService):
         self.pavg = 0
         self.lower_noise = -NOISELEVEL
         self.upper_noise = NOISELEVEL
+        self.turnedOff = False
 
     def setMonitor(self, monitor):
         self.monitor = monitor
@@ -204,14 +205,23 @@ class IbrEssService(AioDbusService):
         self.lastPower = _p
         self.lastUpdate = time.time()
 
-        soc = values["/Soc"]
+        self.soc = values["/Soc"]
 
-        if soc <= 10:
-            logger.debug(f"skip update, soc low: {soc}")
+        if self.soc <= 10:
+            logger.debug(f"skip update, soc low: {self.soc}")
             self.loadavg = 0
-            self.isum = 0
+            if self.soc <= 5:
+                # slow charge
+                self.isum = 100/self.Ki
+                self.turnedOff = False
+            else:
+                self.isum = 0
+                self.setOutput(0, 0)
+                self.turnedOff = True
             self.delta_isum = 0
             return
+        else:
+            self.turnedOff = False
 
         if _p >= self.lower_noise and _p <= self.upper_noise:
 
@@ -260,7 +270,7 @@ class IbrEssService(AioDbusService):
 
             # logger.debug(f"P: {P:.1f}, I: {I:.1f}, D: {D:.1f}, out: {out:.1f}")
 
-            out = bound(0, out, 2500)
+            out = bound(-100, out, 2500)
 
             cl = round(out/self.voltage, 3)
             self.setOutput(out, cl)
@@ -269,13 +279,14 @@ class IbrEssService(AioDbusService):
 
     def setOutput(self, pout, cl):
 
-        p = - pout * 1.05
-        self.monitor.set_value_async(self.acservice, '/Ess/InverterPowerSetpoint', p)
-        self.monitor.set_value_async(self.acservice, '/Ess/AcPowerSetpoint', p)
-        self.monitor.set_value_async(self.acservice, '/Ess/UseInverterPowerSetpoint', 1)
+        if not self.turnedOff:
+            p = - pout * 1.05
+            self.monitor.set_value_async(self.acservice, '/Ess/InverterPowerSetpoint', p)
+            self.monitor.set_value_async(self.acservice, '/Ess/AcPowerSetpoint', p)
+            self.monitor.set_value_async(self.acservice, '/Ess/UseInverterPowerSetpoint', 1)
 
-        logger.debug(f"setting setpoint: {pout:.1f} (scaled: {p:.1f}, currentlimit: {cl}")
-        self.monitor.set_value_async(self.acservice, '/Ac/In/1/CurrentLimit', cl)
+            logger.debug(f"setting setpoint: {pout:.1f} (scaled: {p:.1f}, currentlimit: {cl}")
+            self.monitor.set_value_async(self.acservice, '/Ac/In/1/CurrentLimit', cl)
 
 async def amain(bus_type):
 
