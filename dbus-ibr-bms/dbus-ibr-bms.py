@@ -221,6 +221,7 @@ def fu(u, bcv):
         return 0
     return min((u-umin)/(bcv-umin), 1)
 
+# Todo: use common expfilter class
 class expfilter(object):
     value = 0
     k = 0
@@ -258,6 +259,8 @@ class battery(object):
 
         self.cellCutoff = 0
         self.turnOff = False
+        self.start_emergency = 0
+        self.slowCharge = False
 
         self.BATTERY_CAPACITY = self.get_value("/InstalledCapacity")
         self.maxChargeCurrent = self.get_value("/Info/MaxChargeCurrent")
@@ -390,11 +393,23 @@ class battery(object):
             self.cellCutoff = MIN_CELL_VOLTAGE
 
         if ucell_min <= self.cellCutoff:
+            if not self.turnOff:
+                # Note soc where we started emergency mode
+                self.start_emergency = self.bmssoc
+            logger.info(f"    turnoff emergency soc: {self.start_emergency}")
             self.turnOff = True
         else:
-            self.turnOff = False
+            if self.bmssoc >= self.start_emergency + 2.5:
+                self.turnOff = False
+            logger.info(f"    turnoff emergency soc 2: {self.start_emergency}")
 
-        logger.info(f"    minvolt: {ucell_min:.3f}V, cellcutoff: {self.cellCutoff:.3f}V, turnoff: {self.turnOff}")
+        # Handle slow charge when cell-voltages too low
+        if ucell_min <= 2.6:
+            self.slowCharge = True
+        elif ucell_min >= 2.9:
+            self.slowCharge = False
+
+        logger.info(f"    minvolt: {ucell_min:.3f}V, cellcutoff: {self.cellCutoff:.3f}V, turnoff: {self.turnOff}, slowcharge: {self.slowCharge}.")
 
 
 class history(object):
@@ -683,15 +698,17 @@ class DbusAggBatService(object):
         allbalanced = not (False in map(lambda b: b.isBalanced(), self.batteries.values()))
         allfloat = not (False in map(lambda b: b.isFloating(), self.batteries.values()))
 
-        balancing = []
+        balancing = [] # List of batteries to balance (top or bottom balancing (if turned off))
+        turnOff = [] # List of turned off batteries
         throttling = False
         chgmode = "bulk"
-        turnOff = False
+        slowCharge = False # Slow charge flag
         avgsoc = []
         cellCutoff = []
 
         for batt in self.batteries.values():
 
+            battname = batt.batt.split(".")[-1]
             batt.update(cvavg, allfloat)
 
             avgsoc.append(batt.bmssoc)
@@ -700,7 +717,6 @@ class DbusAggBatService(object):
             # control balancers
             if not (allbulk or allfloat or allbalanced):
                 if batt.isBalancing() or batt.isBalanced():
-                    battname = batt.batt.split(".")[-1]
                     balancing.append(battname)
 
             # Reset balancing state at midnight
@@ -716,11 +732,15 @@ class DbusAggBatService(object):
                 chgmode = "floating"
 
             if batt.turnOff:
-                turnOff = True
+                turnOff.append(battname)
+                balancing.add(battname)
+
+            if batt.slowCharge:
+                slowCharge = True
 
         avgsoc = sum(avgsoc) / len(avgsoc)
 
-        self._dbusservice['/Ess/Balancing'] = balancing
+        self._dbusservice['/Ess/Balancing'] = list(balancing)
         self._dbusservice['/Ess/Chgmode'] = chgmode
         self._dbusservice['/Ess/Throttling'] = throttling
 
@@ -786,7 +806,12 @@ class DbusAggBatService(object):
 
             # force batt off?
             # avoid victron ess charging start (starting at 5% soc?)
-            fakesoc = bound(6, avgsoc, essminsoc)
+            # fakesoc = bound(6, avgsoc, essminsoc)
+
+            if slowCharge:
+                fakesoc = 4
+            else:
+                fakesoc = bound(6, avgsoc, essminsoc)
         else:
             # keep batt alive?
             fakesoc = max(avgsoc, essminsoc + 4) # SocSwitchOffset = 3.0
