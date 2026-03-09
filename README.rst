@@ -69,13 +69,13 @@ Für das Klonen via Git (SSH-Zugang zum Gerät erforderlich):
 3. Manuelle Installation der Dienste
 ------------------------------------
 
-Jeder Dienst kann einzeln installiert werden. Führen Sie dazu das ``setup.sh``-Skript im Verzeichnis des jeweiligen Dienstes aus.
+Jeder Dienst kann einzeln installiert werden. Führen Sie dazu das zentrale ``setup.sh``-Skript mit dem Namen des Dienstes aus.
 
 Beispiel für die Installation des ``dbus-ibr-system``-Dienstes:
 
 .. code-block:: bash
 
-   sh /data/ibr-venus-services/dbus-ibr-system/setup.sh install
+   sh /data/ibr-venus-services/common/setup.sh install dbus-ibr-system
 
 4. Automatisierte Installation (Optional)
 -----------------------------------------
