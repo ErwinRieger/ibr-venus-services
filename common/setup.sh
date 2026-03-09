@@ -1,9 +1,31 @@
+#!/usr/bin/env sh
 
+if [ -z "$1" ]; then
+    echo "Usage:"
+    echo "$(basename $0) <install|remove> <service-name> [ttydev]"
+    echo "$(basename $0) installall"
+    echo "error no cmd (install, remove, installall) given, exiting."
+    exit 1
+fi
+cmd="$1"
+shift
 
+if [ "$cmd" != "installall" ]; then
+    if [ -z "$1" ]; then
+        echo "$(basename $0) <install|remove> <service-name> [ttydev]"
+        echo "$(basename $0) installall"
+        echo "error no service name given, exiting"
+        exit 1
+    fi
+    svcname="$(basename $1)"
+    shift
+    ttydev="$1"
+fi
 
-rp="$(realpath -s $0)"
-srcdir="$(dirname $rp)"
-svcname="$(basename $srcdir)"
+rp="$(readlink -f $0)"
+commondir="$(dirname $rp)"
+ibrdir="$(dirname $commondir)"
+srcdir="${ibrdir}/${svcname}"
 
 prefix=""
 if [ ! -d /opt/victronenergy ]; then
@@ -12,18 +34,20 @@ if [ ! -d /opt/victronenergy ]; then
 fi
 
 echo
-echo "srcdir: $srcdir"
+# echo "self: $0"
+# echo "rp: $rp"
+# echo "commondir: $commondir"
+# echo "ibrdir: $ibrdir"
 echo "svcname: $svcname"
+echo "srcdir: $srcdir"
+# echo "ttydev: $ttydev"
+# echo "prefix: $prefix"
 echo
 
-if [ -z "$1" ]; then
-    echo "usage: $(basename $0) (install, remove, installall) [ttydev]"
-    echo "error no cmd (install, remove) given, exiting."
+if [ ! -d "$srcdir" ]; then
+    echo "Source directory ${srcdir} does not exist, exiting"
     exit 1
 fi
-cmd="$1"
-shift
-
 
 copyandlog() {
     local src="$1"
@@ -106,11 +130,11 @@ revertPatches() {
     done
 }
 
-ss=""
-ttydev="$1"
-svcsrcdir="./service"
-svcdestdir="$prefix/opt/victronenergy/service/$svcname"
 if [ "$cmd" = "install" ]; then
+
+    ss=""
+    svcsrcdir="./service"
+    svcdestdir="$prefix/opt/victronenergy/service/$svcname"
 
     cd $srcdir
 
@@ -174,9 +198,6 @@ if [ "$cmd" = "install" ]; then
 
         # Use eval to expand glob patterns
         for f in $(eval ls $src_part); do
-            if [ "$f" = "setup.sh" ]; then
-                continue
-            fi
             doifchangedormissing copyandlog "$f" "$dstdir" "$(basename $f)"
         done
     done
@@ -229,10 +250,9 @@ elif [ "$cmd" = "revert" ]; then
     # echo "reverting patches"
     revertPatches
 elif [ "$cmd" = "installall" ]; then
-    dn="$(dirname $srcdir)"
-    for service in $(cat $prefix//data/conf/installed-ibr-services); do
-        echo "calling $dn/$service/setup.sh install"
-        $dn/$service/setup.sh install
+    for service in $(cat $prefix/data/conf/installed-ibr-services); do
+        echo "calling $commondir/setup.sh install $service"
+        $commondir/setup.sh install $service
     done
 else
     echo "Error, cmd $cmd not implemented."
