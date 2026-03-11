@@ -41,7 +41,36 @@ def get_ocv(soc):
   # x-Punkte (hier soc_points) monoton ansteigend sind.
   return np.interp(soc, soc_points, ocv_points)
 
-import numpy as np
+
+##########################################################################################################
+#
+# CATL, aus https://akkudoktor.net/t/lifepo4-akkus-auf-100-laden-oder-nicht/6002/4:
+#
+# soc_ocv_data = [
+#    (100, 3.386),
+#    (95, 3.332),
+#    (90, 3.331),
+#    (85, 3.330),
+#    (80, 3.330),
+#    (75, 3.329),
+#    (70, 3.329),
+#    (65, 3.327),
+#    (60, 3.303),
+#    (55, 3.293),
+#    (50, 3.290),
+#    (45, 3.289),
+#    (40, 3.288),
+#    (35, 3.288),
+#    (30, 3.283),
+#    (25, 3.264),
+#    (20, 3.250),
+#    (15, 3.230),
+#    (10, 3.205),
+#    (5, 3.182),
+#    (0, 2.893)
+# ]
+##########################################################################################################
+
 from scipy.optimize import curve_fit, brentq
 import matplotlib.pyplot as plt
 
@@ -138,27 +167,6 @@ def get_lifepo4_ocv_spline_quad(soc: float) -> float:
     soc = np.clip(soc, 0, 100)
     return splev(soc, tck_quadratic).item()
 
-# --- Anwendung und Visualisierung ---
-if __name__ == "__main__":
-    print("--- Quadratisches B-Spline-Modell (k=2) basierend auf Tabelle 2 ---")
-
-    # Erzeuge Daten für den Plot
-    soc_smooth = np.linspace(0, 100, 400)
-    ocv_spline_curve_quadratic = splev(soc_smooth, tck_quadratic)
-
-    # Plot erstellen
-    plt.figure(figsize=(10, 6))
-    plt.scatter(SOC_POINTS, OCV_POINTS_TABLE2, color='red', label='Stützpunkte (Tabelle 2)', zorder=5)
-    plt.plot(soc_smooth, ocv_spline_curve_quadratic, color='blue', linewidth=2.5, label='Quadratische B-Spline Kurve (k=2)')
-
-    plt.title('Quadratische LiFePO4 Kennlinie (OCV vs. SOC)', fontsize=14)
-    plt.xlabel('Ladezustand (SOC) [%]', fontsize=12)
-    plt.ylabel('Ruhespannung (OCV) [V]', fontsize=12)
-    plt.grid(True)
-    plt.legend()
-    plt.show()
-
-
 from scipy.interpolate import UnivariateSpline
 
 # 1. Datenpunkte aus Tabelle 2 (unverändert)
@@ -186,4 +194,25 @@ def get_lifepo4_ocv_smoothing_spline(soc: float) -> float:
     # soc = np.clip(soc, 0, 100)
     # Die erstellte Spline-Instanz kann direkt wie eine Funktion aufgerufen werden.
     return smoothing_spline(soc).item()
+
+# --- Anwendung und Visualisierung ---
+if __name__ == "__main__":
+    print("--- Quadratisches B-Spline-Modell (k=2) basierend auf Tabelle 2 ---")
+
+    # Erzeuge Daten für den Plot
+    soc_smooth = np.linspace(0, 100, 400)
+    ocv_spline_curve_quadratic = splev(soc_smooth, tck_quadratic)
+
+    # Plot erstellen
+    plt.figure(figsize=(10, 6))
+    plt.scatter(SOC_POINTS, OCV_POINTS_TABLE2, color='red', label='Stützpunkte (Tabelle 2)', zorder=5)
+    plt.plot(soc_smooth, ocv_spline_curve_quadratic, color='blue', linewidth=2.5, label='Quadratische B-Spline Kurve (k=2)')
+
+    plt.title('Quadratische LiFePO4 Kennlinie (OCV vs. SOC)', fontsize=14)
+    plt.xlabel('Ladezustand (SOC) [%]', fontsize=12)
+    plt.ylabel('Ruhespannung (OCV) [V]', fontsize=12)
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
 
