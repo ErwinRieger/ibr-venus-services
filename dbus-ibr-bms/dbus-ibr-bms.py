@@ -698,7 +698,7 @@ class DbusAggBatService(object):
         allbalanced = not (False in map(lambda b: b.isBalanced(), self.batteries.values()))
         allfloat = not (False in map(lambda b: b.isFloating(), self.batteries.values()))
 
-        balancing = [] # List of batteries to balance (top or bottom balancing (if turned off))
+        balancing = set() # List of batteries to balance (top or bottom balancing (if turned off))
         turnOff = [] # List of turned off batteries
         throttling = False
         chgmode = "bulk"
@@ -717,7 +717,7 @@ class DbusAggBatService(object):
             # control balancers
             if not (allbulk or allfloat or allbalanced):
                 if batt.isBalancing() or batt.isBalanced():
-                    balancing.append(battname)
+                    balancing.add(battname)
 
             # Reset balancing state at midnight
             if batt.isBalanced() and time.localtime().tm_hour == 0:
