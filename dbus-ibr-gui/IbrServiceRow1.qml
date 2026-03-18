@@ -26,7 +26,7 @@ MbItemCol {
 
     values: [
             MbItemRow {
-		        description: qsTr("Erzeug:")
+		        description: qsTr("Erzeugt:")
                 mbStyle: IbrSmallStyle { }
 			    values: [
                     MbTextBlock { 
