@@ -118,12 +118,12 @@ class MemWatch:
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
 
-        # Sort by current absolute memory primary, and total growth secondary
-        candidates.sort(key=lambda x: (x['curr_rss_val'], x['growth_val']), reverse=True)
+        # Sort by total growth primary, and current absolute memory secondary
+        candidates.sort(key=lambda x: (x['growth_val'], x['curr_rss_val']), reverse=True)
 
         # Clear Screen
         print("\033[H\033[J", end="")
-        print(f"Venus OS MemWatch (Rate over last 10s) - {datetime.now().strftime('%H:%M:%S')}")
+        print(f"Venus OS MemWatch (Sorted by Total Growth) - {datetime.now().strftime('%H:%M:%S')}")
         print(f"{'PID':<8} {'PROCESS NAME':<25} {'START':<10} {'CURRENT':<10} {'GROWTH':<10} {'RATE':<12} {'CPU%'}")
         print("-" * 87)
         

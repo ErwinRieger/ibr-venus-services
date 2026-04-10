@@ -17,6 +17,14 @@ Features
 * **Sorting:** Displays the Top 5 processes, sorted primarily by absolute memory usage (RSS) and secondarily by total growth since baseline.
 * **Real-time Stats:** Shows Start Memory, Current Memory, Total Growth, Growth Rate, and current CPU load.
 
+Requirements
+------------
+* The ``python3-psutil`` package must be installed on Venus OS:
+
+.. code-block:: bash
+
+    opkg update && opkg install python3-psutil
+
 Usage
 -----
 .. code-block:: bash
