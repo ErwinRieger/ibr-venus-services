@@ -126,6 +126,11 @@ class IbrRsHackService(AioDbusService):
         self.add_item(IntegerItem('/Ac/In/1/Type', 0))
         self.add_item(DoubleItem('/Yield/User', 0))
         self.add_item(IntegerItem("/MppOperationMode", 0))
+        self.add_item(IntegerItem("/ErrorCode", 0))
+        self.add_item(IntegerItem("/Alarms/ShortCircuit", 0))
+        self.add_item(IntegerItem("/Alarms/LowSoc", 0))
+        self.add_item(DoubleItem("/Soc", None))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/ShortCircuit", 0))
 
         # Flag, output energy consumption if
         # multiplus is off
