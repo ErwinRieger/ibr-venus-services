@@ -129,8 +129,24 @@ class IbrRsHackService(AioDbusService):
         self.add_item(IntegerItem("/ErrorCode", 0))
         self.add_item(IntegerItem("/Alarms/ShortCircuit", 0))
         self.add_item(IntegerItem("/Alarms/LowSoc", 0))
+        self.add_item(IntegerItem("/Alarms/HighTemperature", 0))
+        self.add_item(IntegerItem("/Alarms/HighVoltage", 0))
+        self.add_item(IntegerItem("/Alarms/HighVoltageAcOut", 0))
+        self.add_item(IntegerItem("/Alarms/LowVoltage", 0))
+        self.add_item(IntegerItem("/Alarms/LowVoltageAcOut", 0))
+        self.add_item(IntegerItem("/Alarms/Overload", 0))
+        self.add_item(IntegerItem("/Alarms/Ripple", 0))
+
         self.add_item(DoubleItem("/Soc", None))
         self.add_item(IntegerItem("/Settings/AlarmLevel/ShortCircuit", 0))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/HighTemperature", 0))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/HighVoltage", 0))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/HighVoltageAcOut", 0))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/LowSoc", 0))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/LowVoltage", 0))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/LowVoltageAcOut", 0))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/Overload", 0))
+        self.add_item(IntegerItem("/Settings/AlarmLevel/Ripple", 0))
 
         # Flag, output energy consumption if
         # multiplus is off
