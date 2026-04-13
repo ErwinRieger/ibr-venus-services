@@ -144,6 +144,10 @@ class IbrEssService(AioDbusService):
         self.add_item(TextItem("/Mgmt/Connection", "local"))
         self.add_item(IntegerItem("/Connected", 1))
         self.add_item(TextItem("/CustomName", "IBR Shelly Meter"))
+        self.add_item(TextItem("/DataManagerVersion", "1.0"))
+        self.add_item(TextItem("/DeviceName", "IBR Shelly RSMulti"))
+        self.add_item(TextItem("/Serial", "000000000000"))
+        self.add_item(TextItem("/HardwareVersion", "1.0"))
 
         self.acservice = None
         self.monitor = None
