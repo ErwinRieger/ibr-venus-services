@@ -10,7 +10,7 @@ VICTRON_PATH = "/opt/victronenergy"
 SYSTEM_PROGS = ["dbus-daemon", "flashmq", "localsettings"]
 UPDATE_INTERVAL = 1.0
 NEW_PROC_BASELINE_DELAY = 10.0  # seconds to wait for a new process to stabilize
-RATE_WINDOW = 10               # seconds for sliding rate calculation
+RATE_WINDOW = 3600             # seconds for sliding rate calculation (1 hour)
 
 def format_bytes(n, suffix='B'):
     """Converts bytes to human readable format (B, K, M, G)."""
@@ -43,17 +43,12 @@ class MemWatch:
                     
                     if is_victron or is_system:
                         name = proc.info['name'] or (os.path.basename(exe) if exe else "unknown")
-                        rss = proc.memory_info().rss
-                        
-                        # If the process existed when we started the script, we take baseline immediately.
-                        # Otherwise, we wait 10 seconds.
-                        is_initial = (now - self.start_time) < 2.0
                         
                         self.procs[pid] = {
                             'name': name,
                             'proc': proc,
-                            'baseline_rss': rss if is_initial else None,
-                            'baseline_time': now if is_initial else None,
+                            'baseline_rss': None,
+                            'baseline_time': None,
                             'discovery_time': now,
                             'rss_history': deque(maxlen=RATE_WINDOW)
                         }
@@ -70,12 +65,14 @@ class MemWatch:
         for pid, info in self.procs.items():
             try:
                 curr_rss = info['proc'].memory_info().rss
-                info['rss_history'].append((now, curr_rss))
                 
                 if info['baseline_rss'] is None:
                     if (now - info['discovery_time']) >= NEW_PROC_BASELINE_DELAY:
                         info['baseline_rss'] = curr_rss
                         info['baseline_time'] = now
+                        info['rss_history'].append((now, curr_rss))
+                else:
+                    info['rss_history'].append((now, curr_rss))
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
 
@@ -92,14 +89,14 @@ class MemWatch:
                 curr_time, curr_rss = hist[-1]
                 old_time, old_rss = hist[0]
                 
-                cpu = info['proc'].cpu_percent()
-                
-                # Windowed rate calculation (last 10s)
+                # Sliding window rate calculation (up to 1 hour)
                 window_duration = curr_time - old_time
-                if window_duration > 0:
-                    rate = (curr_rss - old_rss) / window_duration
+                if window_duration > 3600:
+                    rate_h = (curr_rss - old_rss) / 3600
+                else: window_duration > 0:
+                    rate_h = ((curr_rss - old_rss) / window_duration
                 else:
-                    rate = 0
+                    rate_h = 0
                 
                 total_growth = curr_rss - info['baseline_rss']
                 
@@ -111,9 +108,8 @@ class MemWatch:
                     'curr_rss_val': curr_rss,
                     'growth_val': total_growth,
                     'growth_str': format_bytes(total_growth),
-                    'rate_val': rate,
-                    'rate_str': format_bytes(rate, suffix='/s'),
-                    'cpu': cpu
+                    'rate_h_str': format_bytes(rate_h, suffix='/h'),
+                    'cpu': info['proc'].cpu_percent()
                 })
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
@@ -122,13 +118,18 @@ class MemWatch:
         candidates.sort(key=lambda x: (x['growth_val'], x['curr_rss_val']), reverse=True)
 
         # Clear Screen
+        elapsed = int(now - self.start_time)
+        hours, remainder = divmod(elapsed, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        elapsed_str = f"{hours:02}:{minutes:02}:{seconds:02}"
+        
         print("\033[H\033[J", end="")
-        print(f"Venus OS MemWatch (Sorted by Total Growth) - {datetime.now().strftime('%H:%M:%S')}")
-        print(f"{'PID':<8} {'PROCESS NAME':<25} {'START':<10} {'CURRENT':<10} {'GROWTH':<10} {'RATE':<12} {'CPU%'}")
+        print(f"Venus OS MemWatch (Sorted by Total Growth) - Uptime: {elapsed_str}")
+        print(f"{'PID':<8} {'PROCESS NAME':<25} {'START':<10} {'CURRENT':<10} {'GROWTH':<10} {'RATE/h':<12} {'CPU%'}")
         print("-" * 87)
         
         for c in candidates[:5]:
-            print(f"{c['pid']:<8} {c['name']:<25} {c['start_mem']:<10} {c['curr_mem']:<10} {c['growth_str']:<10} {c['rate_str']:<12} {c['cpu']:>4.1f}%")
+            print(f"{c['pid']:<8} {c['name']:<25} {c['start_mem']:<10} {c['curr_mem']:<10} {c['growth_str']:<10} {c['rate_h_str']:<12} {c['cpu']:>4.1f}%")
 
 def main():
     watch = MemWatch()
