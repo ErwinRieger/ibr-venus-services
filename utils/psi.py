@@ -5,11 +5,11 @@ import os
 
 class PSIEmulator:
     def __init__(self):
-        # [avg10, avg60, avg300, total_us]
+        # [avg10, avg60, avg300, total_us, last_inst]
         self.state = {
-            "cpu":    {"some": [0.0, 0.0, 0.0, 0]},
-            "memory": {"some": [0.0, 0.0, 0.0, 0], "full": [0.0, 0.0, 0.0, 0]},
-            "io":     {"some": [0.0, 0.0, 0.0, 0], "full": [0.0, 0.0, 0.0, 0]},
+            "cpu":    {"some": [0.0, 0.0, 0.0, 0, 0.0]},
+            "memory": {"some": [0.0, 0.0, 0.0, 0, 0.0], "full": [0.0, 0.0, 0.0, 0, 0.0]},
+            "io":     {"some": [0.0, 0.0, 0.0, 0, 0.0], "full": [0.0, 0.0, 0.0, 0, 0.0]},
         }
         self.last_time = time.time()
         
@@ -39,6 +39,7 @@ class PSIEmulator:
                 avgs[1] = self.update_avg(avgs[1], current_val, 60, interval)
                 avgs[2] = self.update_avg(avgs[2], current_val, 300, interval)
                 avgs[3] += int(current_val * interval * 1000000)
+                avgs[4] = current_val
 
     def render(self, resource):
         res = self.state[resource]
@@ -48,7 +49,8 @@ class PSIEmulator:
             v = res[s_f]
             # total is stored in microseconds, convert to seconds for display
             total_sec = v[3] / 1000000.0
-            out.append(f"{s_f} avg10={v[0]:.2f} avg60={v[1]:.2f} avg300={v[2]:.2f} total={total_sec:.2f}s")
+            rate = v[4]
+            out.append(f"{s_f:<4} avg10={v[0]:>6.2f} avg60={v[1]:>6.2f} avg300={v[2]:>6.2f} total={total_sec:>10.2f}s rate={rate:>5.2f}s/s")
         return "\n".join(out)
 
 def get_cpu_stat():
