@@ -93,8 +93,8 @@ class MemWatch:
                 window_duration = curr_time - old_time
                 if window_duration > 3600:
                     rate_h = (curr_rss - old_rss) / 3600
-                else: window_duration > 0:
-                    rate_h = ((curr_rss - old_rss) / window_duration
+                elif window_duration > 0:
+                    rate_h = (curr_rss - old_rss) / window_duration
                 else:
                     rate_h = 0
                 
