@@ -73,6 +73,7 @@ def get_vmstat():
 
 def main():
     emu = PSIEmulator()
+    start_time = time.time()
     prev_total, prev_idle, prev_iowait = get_cpu_stat()
     prev_vm = get_vmstat()
     
@@ -100,8 +101,14 @@ def main():
 
             emu.update(cpu_usage, io_stall, pgscan, pswp)
             
+            now = time.time()
+            elapsed = int(now - start_time)
+            hours, remainder = divmod(elapsed, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            elapsed_str = f"{hours:02}:{minutes:02}:{seconds:02}"
+
             print("\033[H", end="")
-            print(f"Emulated PSI (Pressure Stall Info) - {time.strftime('%H:%M:%S')}")
+            print(f"Emulated PSI (Pressure Stall Info) - Uptime: {elapsed_str}")
             print("Unit: avg is % of time, total is cumulative seconds.\n")
             
             descriptions = {
