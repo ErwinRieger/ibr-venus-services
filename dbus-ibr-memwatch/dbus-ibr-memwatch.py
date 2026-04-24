@@ -70,7 +70,7 @@ class MemWatchService:
                 if info['baseline_rss'] is None:
                     if (now - info['discovery_time']) >= NEW_PROC_BASELINE_DELAY:
                         info['baseline_rss'] = curr_rss
-                        logging.info(f"Set baseline for {info['name']} (PID {pid}): {format_bytes(curr_rss)}")
+                        logging.info(f"Baseline for {info['name']} (PID {pid}) set to {format_bytes(curr_rss)}")
                     continue
 
                 if curr_rss > info['baseline_rss'] * THRESHOLD_FACTOR:
