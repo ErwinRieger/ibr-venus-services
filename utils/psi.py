@@ -41,10 +41,10 @@ class PSIEmulator:
                 avgs[3] += int(current_val * interval * 1000000)
                 avgs[4] = current_val
 
-    def render(self, resource):
+    def render(self, resource, modes=["some", "full"]):
         res = self.state[resource]
         out = []
-        for s_f in ["some", "full"]:
+        for s_f in modes:
             if s_f not in res: continue
             v = res[s_f]
             # total is stored in microseconds, convert to seconds for display
@@ -113,13 +113,15 @@ def main():
             
             descriptions = {
                 "cpu":    "Some: Contention - Tasks waiting for CPU cycles.",
-                "memory": "Full: Thrashing - System busy reclaiming/swapping.",
-                "io":     "Full: Blocked - All tasks waiting for storage/network."
+                "io":     "Full: Blocked - All tasks waiting for storage/network.",
+                "memory": "Full: Thrashing - System busy reclaiming/swapping."
             }
 
             for res in ["cpu", "io", "memory"]:
                 print(f"/proc/pressure/{res} ({descriptions[res]})")
-                print(emu.render(res))
+                # For CPU show 'some', for others show 'full'
+                render_mode = ["some"] if res == "cpu" else ["full"]
+                print(emu.render(res, modes=render_mode))
                 print()
 
             prev_total, prev_idle, prev_iowait = curr_total, curr_idle, curr_iowait
