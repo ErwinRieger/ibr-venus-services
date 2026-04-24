@@ -121,15 +121,16 @@ class MemWatchService:
             if info['baseline_rss'] is None: continue
             try:
                 curr_rss = info['proc'].memory_info().rss
-                candidates.append((pid, info['name'], info['baseline_rss'], curr_rss))
+                growth = curr_rss / info['baseline_rss'] if info['baseline_rss'] > 0 else 0
+                candidates.append((pid, info['name'], info['baseline_rss'], curr_rss, growth))
             except: continue
         
-        candidates.sort(key=lambda x: x[3], reverse=True)
+        # Sort by growth factor
+        candidates.sort(key=lambda x: x[4], reverse=True)
         
-        logging.info("--- Memory Report ---")
+        logging.info("--- Memory Report (Sorted by Growth) ---")
         logging.info(f"{'PID':<8} {'PROCESS NAME':<25} {'BASELINE':<10} {'CURRENT':<10} {'GROWTH'}")
-        for pid, name, base, curr in candidates[:15]:
-            growth = curr / base if base > 0 else 0
+        for pid, name, base, curr, growth in candidates[:15]:
             logging.info(f"{pid:<8} {name:<25} {format_bytes(base):<10} {format_bytes(curr):<10} {growth:.2f}x")
         logging.info("---------------------")
 
