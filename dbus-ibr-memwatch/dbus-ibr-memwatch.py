@@ -26,6 +26,9 @@ def format_bytes(n, suffix='B'):
 class MemWatchService:
     def __init__(self):
         self.procs = {} # pid -> {name, proc, baseline_rss, threshold_start_time, discovery_time}
+        self.restart_counts = {} # name -> count
+        self.pid_changes = {}    # name -> count
+        self.pid_history = {}    # name -> last_pid
         self.start_time = time.time()
 
     def update_procs(self):
@@ -46,6 +49,12 @@ class MemWatchService:
                     
                     if is_victron or is_system:
                         name = proc.info['name'] or (os.path.basename(exe) if exe else "unknown")
+                        
+                        # Detect PID change for this name
+                        if name in self.pid_history and self.pid_history[name] != pid:
+                            self.pid_changes[name] = self.pid_changes.get(name, 0) + 1
+                        self.pid_history[name] = pid
+
                         self.procs[pid] = {
                             'name': name,
                             'proc': proc,
@@ -107,6 +116,9 @@ class MemWatchService:
         svc_name = self.find_service_name(name)
         
         if svc_name:
+            # Increment restart counter ONLY if we found a service to restart
+            self.restart_counts[name] = self.restart_counts.get(name, 0) + 1
+            
             svc_path = f"/service/{svc_name}"
             logging.error(f"RESTARTING SERVICE {svc_name} (PID {info['proc'].pid}) due to high memory usage (>1h over threshold)")
             os.system(f"svc -d {svc_path}")
@@ -122,16 +134,18 @@ class MemWatchService:
             try:
                 curr_rss = info['proc'].memory_info().rss
                 growth = curr_rss / info['baseline_rss'] if info['baseline_rss'] > 0 else 0
-                candidates.append((pid, info['name'], info['baseline_rss'], curr_rss, growth))
+                restarts = self.restart_counts.get(info['name'], 0)
+                changes = self.pid_changes.get(info['name'], 0)
+                candidates.append((pid, info['name'], info['baseline_rss'], curr_rss, growth, restarts, changes))
             except: continue
         
         # Sort by growth factor
         candidates.sort(key=lambda x: x[4], reverse=True)
         
         logging.info("--- Memory Report (Sorted by Growth) ---")
-        logging.info(f"{'PID':<8} {'PROCESS NAME':<25} {'BASELINE':<10} {'CURRENT':<10} {'GROWTH'}")
-        for pid, name, base, curr, growth in candidates[:15]:
-            logging.info(f"{pid:<8} {name:<25} {format_bytes(base):<10} {format_bytes(curr):<10} {growth:.2f}x")
+        logging.info(f"{'PID':<8} {'PROCESS NAME':<25} {'BASELINE':<10} {'CURRENT':<10} {'GROWTH':<8} {'RESTARTS':<10} {'CHANGES'}")
+        for pid, name, base, curr, growth, restarts, changes in candidates[:15]:
+            logging.info(f"{pid:<8} {name:<25} {format_bytes(base):<10} {format_bytes(curr):<10} {growth:.2f}x       {restarts:<10} {changes}")
         logging.info("---------------------")
 
 def main():
