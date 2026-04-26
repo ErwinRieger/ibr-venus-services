@@ -129,8 +129,13 @@ class MemWatchService:
         return None
 
     def restart_service(self, p):
+        if p.name == "dbus-daemon":
+            p.mark_restart()
+            logging.error(f"RESTARTING DBUS-DAEMON (PID {p.pid}) due to high memory usage")
+            os.system("/etc/init.d/dbus-1 restart")
+            return
+
         svc_name = self.find_service_name(p.name)
-        
         if svc_name:
             p.mark_restart()
             svc_path = f"/service/{svc_name}"
