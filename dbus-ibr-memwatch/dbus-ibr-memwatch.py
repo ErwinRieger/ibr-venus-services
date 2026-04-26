@@ -3,7 +3,6 @@ import psutil
 import time
 import os
 import logging
-from collections import deque
 
 # Configuration
 VICTRON_PATH = "/opt/victronenergy"
@@ -23,12 +22,45 @@ def format_bytes(n, suffix='B'):
         n /= 1024.0
     return f"{n:.1f}P{suffix}"
 
+class WatchedProcess:
+    # Persistent stats shared across instances (per process name)
+    restart_counts = {} 
+    pid_changes = {}    
+    pid_history = {}    
+
+    def __init__(self, pid, name, proc, discovery_time):
+        self.pid = pid
+        self.name = name
+        self.proc = proc
+        self.discovery_time = discovery_time
+        self.baseline_rss = None
+        self.threshold_start_time = None
+        
+        # Track PID changes
+        if name in self.pid_history and self.pid_history[name] != pid:
+            self.pid_changes[name] = self.pid_changes.get(name, 0) + 1
+        self.pid_history[name] = pid
+
+    def get_rss(self):
+        try:
+            return self.proc.memory_info().rss
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return None
+            
+    @property
+    def restarts(self):
+        return self.restart_counts.get(self.name, 0)
+        
+    @property
+    def changes(self):
+        return self.pid_changes.get(self.name, 0)
+
+    def mark_restart(self):
+        self.restart_counts[self.name] = self.restart_counts.get(self.name, 0) + 1
+
 class MemWatchService:
     def __init__(self):
-        self.procs = {} # pid -> {name, proc, baseline_rss, threshold_start_time, discovery_time}
-        self.restart_counts = {} # name -> count
-        self.pid_changes = {}    # name -> count
-        self.pid_history = {}    # name -> last_pid
+        self.procs = {} # pid -> WatchedProcess
         self.start_time = time.time()
 
     def update_procs(self):
@@ -49,19 +81,7 @@ class MemWatchService:
                     
                     if is_victron or is_system:
                         name = proc.info['name'] or (os.path.basename(exe) if exe else "unknown")
-                        
-                        # Detect PID change for this name
-                        if name in self.pid_history and self.pid_history[name] != pid:
-                            self.pid_changes[name] = self.pid_changes.get(name, 0) + 1
-                        self.pid_history[name] = pid
-
-                        self.procs[pid] = {
-                            'name': name,
-                            'proc': proc,
-                            'baseline_rss': None,
-                            'discovery_time': now,
-                            'threshold_start_time': None
-                        }
+                        self.procs[pid] = WatchedProcess(pid, name, proc, now)
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
 
@@ -72,30 +92,27 @@ class MemWatchService:
 
     def check_memory(self):
         now = time.time()
-        for pid, info in self.procs.items():
-            try:
-                curr_rss = info['proc'].memory_info().rss
-                
-                if info['baseline_rss'] is None:
-                    if (now - info['discovery_time']) >= NEW_PROC_BASELINE_DELAY:
-                        info['baseline_rss'] = curr_rss
-                        logging.info(f"Baseline for {info['name']} (PID {pid}) set to {format_bytes(curr_rss)}")
-                    continue
-
-                if curr_rss > info['baseline_rss'] * THRESHOLD_FACTOR:
-                    if info['threshold_start_time'] is None:
-                        info['threshold_start_time'] = now
-                        logging.warning(f"Memory threshold exceeded for {info['name']} (PID {pid}): {format_bytes(curr_rss)} > {THRESHOLD_FACTOR}x baseline")
-                    elif (now - info['threshold_start_time']) >= THRESHOLD_DURATION:
-                        self.restart_service(info)
-                        info['threshold_start_time'] = None # Reset after restart attempt
-                else:
-                    if info['threshold_start_time'] is not None:
-                        logging.info(f"Memory normalized for {info['name']} (PID {pid})")
-                        info['threshold_start_time'] = None
-
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
+        for pid, p in self.procs.items():
+            curr_rss = p.get_rss()
+            if curr_rss is None: continue
+            
+            if p.baseline_rss is None:
+                if (now - p.discovery_time) >= NEW_PROC_BASELINE_DELAY:
+                    p.baseline_rss = curr_rss
+                    logging.info(f"Baseline for {p.name} (PID {pid}) set to {format_bytes(curr_rss)}")
                 continue
+
+            if curr_rss > p.baseline_rss * THRESHOLD_FACTOR:
+                if p.threshold_start_time is None:
+                    p.threshold_start_time = now
+                    logging.warning(f"Memory threshold exceeded for {p.name} (PID {pid}): {format_bytes(curr_rss)} > {THRESHOLD_FACTOR}x baseline")
+                elif (now - p.threshold_start_time) >= THRESHOLD_DURATION:
+                    self.restart_service(p)
+                    p.threshold_start_time = None
+            else:
+                if p.threshold_start_time is not None:
+                    logging.info(f"Memory normalized for {p.name} (PID {pid})")
+                    p.threshold_start_time = None
 
     def find_service_name(self, proc_name):
         """Tries to find the service name in /service/ that matches the process name."""
@@ -111,33 +128,28 @@ class MemWatchService:
             pass
         return None
 
-    def restart_service(self, info):
-        name = info['name']
-        svc_name = self.find_service_name(name)
+    def restart_service(self, p):
+        svc_name = self.find_service_name(p.name)
         
         if svc_name:
-            # Increment restart counter ONLY if we found a service to restart
-            self.restart_counts[name] = self.restart_counts.get(name, 0) + 1
-            
+            p.mark_restart()
             svc_path = f"/service/{svc_name}"
-            logging.error(f"RESTARTING SERVICE {svc_name} (PID {info['proc'].pid}) due to high memory usage (>1h over threshold)")
+            logging.error(f"RESTARTING SERVICE {svc_name} (PID {p.pid}) due to high memory usage (>1h over threshold)")
             os.system(f"svc -d {svc_path}")
             time.sleep(2)
             os.system(f"svc -u {svc_path}")
         else:
-            logging.error(f"Cannot restart {name}: No matching service found in /service/")
+            logging.error(f"Cannot restart {p.name}: No matching service found in /service/")
 
     def log_table(self):
         candidates = []
-        for pid, info in self.procs.items():
-            if info['baseline_rss'] is None: continue
-            try:
-                curr_rss = info['proc'].memory_info().rss
-                growth = curr_rss / info['baseline_rss'] if info['baseline_rss'] > 0 else 0
-                restarts = self.restart_counts.get(info['name'], 0)
-                changes = self.pid_changes.get(info['name'], 0)
-                candidates.append((pid, info['name'], info['baseline_rss'], curr_rss, growth, restarts, changes))
-            except: continue
+        for pid, p in self.procs.items():
+            if p.baseline_rss is None: continue
+            curr_rss = p.get_rss()
+            if curr_rss is None: continue
+            
+            growth = curr_rss / p.baseline_rss if p.baseline_rss > 0 else 0
+            candidates.append((pid, p.name, p.baseline_rss, curr_rss, growth, p.restarts, p.changes))
         
         # Sort by growth factor
         candidates.sort(key=lambda x: x[4], reverse=True)
