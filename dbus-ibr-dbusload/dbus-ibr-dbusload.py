@@ -112,7 +112,7 @@ class DbusLoadService:
                 if s['avg10'] < 0.01 and s['avg60'] < 0.01:
                     del self.stats[name]
 
-    def log_table(self):
+    def log_table(self, now, last_table_time):
         items = []
         for name, s in self.stats.items():
             burst = "BURST!" if s['last_rate'] > BURST_THRESHOLD else ""
@@ -121,7 +121,8 @@ class DbusLoadService:
         # Sort by 10s avg
         items.sort(key=lambda x: x[1], reverse=True)
         
-        logging.info("--- D-Bus Load Report (msgs/sec) ---")
+        dt = int(now - last_table_time)
+        logging.info(f"--- D-Bus Load Report (msgs/sec), dt: {dt}s ---")
         logging.info(f"{'SERVICE':<40} {'10s':>8} {'1m':>8} {'5m':>8}  {'STATUS'}")
         for name, a10, a60, a300, burst in items[:20]:
             logging.info(f"{name[:40]:<40} {a10:>8.2f} {a60:>8.2f} {a300:>8.2f}  {burst}")
@@ -129,11 +130,14 @@ class DbusLoadService:
 
 def main():
     service = DbusLoadService()
+    state = {'last_table': time.time()}
     
     def on_timer():
         try:
+            now = time.time()
             service.update_stats()
-            service.log_table()
+            service.log_table(now, state['last_table'])
+            state['last_table'] = now
         except Exception as e:
             logging.error(f"Error in timer: {e}")
         return True

@@ -146,7 +146,7 @@ class MemWatchService:
         else:
             logging.error(f"Cannot restart {p.name}: No matching service found in /service/")
 
-    def log_table(self):
+    def log_table(self, now, last_table_time):
         candidates = []
         for pid, p in self.procs.items():
             if p.baseline_rss is None: continue
@@ -159,7 +159,8 @@ class MemWatchService:
         # Sort by growth factor
         candidates.sort(key=lambda x: x[4], reverse=True)
         
-        logging.info("--- Memory Report (Sorted by Growth) ---")
+        dt = int(now - last_table_time)
+        logging.info(f"--- Memory Report (Sorted by Growth), dt: {dt}s ---")
         logging.info(f"{'PID':<8} {'PROCESS NAME':<25} {'BASELINE':<10} {'CURRENT':<10} {'GROWTH':<8} {'RESTARTS':<10} {'CHANGES'}")
         for pid, name, base, curr, growth, restarts, changes in candidates[:15]:
             logging.info(f"{pid:<8} {name:<25} {format_bytes(base):<10} {format_bytes(curr):<10} {growth:.2f}x       {restarts:<10} {changes}")
@@ -186,7 +187,7 @@ def main():
                 should_log = True
 
             if should_log:
-                service.log_table()
+                service.log_table(now, last_table)
                 last_table = now
 
         except Exception as e:
