@@ -26,6 +26,9 @@ class Felicity(Battery):
         self.max_battery_discharge_current = MAX_BATTERY_DISCHARGE_CURRENT
         # self.control_discharge_current = self.max_battery_discharge_current
 
+        self.cell_min_no = None
+        self.cell_max_no = None
+
     BATTERYTYPE = "Felicity"
     LENGTH_CHECK = 4
     LENGTH_POS = 2
@@ -107,10 +110,7 @@ class Felicity(Battery):
 
         firmware = self.read_serial_data_felicity(self.command_firmware_version)
         if firmware is False:
-            logger.warning("read_gen_data(): error serial read")
-            return False
-
-        if firmware is False:
+            logger.error("read_gen_data(): error serial read")
             return False
 
         self.version = str(unpack(">h", firmware)[0])
@@ -118,10 +118,7 @@ class Felicity(Battery):
 
         serialnumber = self.read_serial_data_felicity(self.command_serialnumber)
         if serialnumber is False:
-            logger.warning("read_gen_data(): error serial read")
-            return False
-
-        if serialnumber is False:
+            logger.error("read_gen_data(): error serial read")
             return False
 
         if len(serialnumber) != 10:
@@ -134,12 +131,13 @@ class Felicity(Battery):
         s4 = str(unpack_from(">H", serialnumber, 3 * 2)[0])
         s5 = str(unpack_from(">H", serialnumber, 4 * 2)[0])
         serial_number = s1 + s2 + s3 + s4 + s5
-        self.hardware_version = f"Felicity SN: {serial_number} " + str(self.cell_count) + " cells"
-        logger.info(f"Fake hardware version: {self.hardware_version}")
 
         self.cell_count = 16
         for c in range(self.cell_count):
             self.cells.append(Cell(False))
+
+        self.hardware_version = f"Felicity SN: {serial_number} " + str(self.cell_count) + " cells"
+        logger.info(f"Fake hardware version: {self.hardware_version}")
 
         # temperature_sensors = 4
 
@@ -149,28 +147,30 @@ class Felicity(Battery):
 
         soc_data = self.read_serial_data_felicity(self.command_soc)
         if soc_data is False:
-            logger.warning("read_soc_data(): error serial read")
+            logger.error("read_soc_data(): error serial read")
             return False
 
         if len(soc_data) != 2:
             logger.error(">>> INFO: soc Data size are wrong: %s", len(soc_data))
-        else:
-            self.set_soc(unpack_from(">H", soc_data)[0])
-            logger.debug(">>> INFO: Battery SoC: %s", self.soc)
+            return False
+
+        self.set_soc(unpack_from(">H", soc_data)[0])
+        logger.debug(">>> INFO: Battery SoC: %s", self.soc)
 
         voltage_current_data = self.read_serial_data_felicity(self.command_total_voltage_current)
         if voltage_current_data is False:
-            logger.warning("read_soc_data(): error serial read voltage_current_data")
+            logger.error("read_soc_data(): error serial read voltage_current_data")
             return False
 
         if len(voltage_current_data) != 4:
             logger.error(">>> INFO: voltage_current Data size are wrong: %s", len(voltage_current_data))
-        else:
-            self.voltage = unpack_from(">H", voltage_current_data)[0] / 100
-            logger.debug(">>> INFO: Battery voltage: %f V", self.voltage)
+            return False
 
-            self.current = unpack_from(">h", voltage_current_data, 2)[0] / 10 * -1
-            logger.debug(">>> INFO: Battery current: %f A", self.current)
+        self.voltage = unpack_from(">H", voltage_current_data)[0] / 100
+        logger.debug(">>> INFO: Battery voltage: %f V", self.voltage)
+
+        self.current = unpack_from(">h", voltage_current_data, 2)[0] / 10 * -1
+        logger.debug(">>> INFO: Battery current: %f A", self.current)
 
         """
         if USE_BMS_DVCC_VALUES is True:
@@ -194,99 +194,105 @@ class Felicity(Battery):
 
         status_data = self.read_serial_data_felicity(self.command_status)
         if status_data is False:
-            logger.warning("read_soc_data(): error serial read status_data")
+            logger.error("read_soc_data(): error serial read status_data")
             return False
 
         if len(status_data) != 6:
             logger.error(">>> INFO: Status Data size are wrong: %s", len(status_data))
-        else:
-            status_int = unpack_from(">H", status_data)[0]
+            return False
 
-            # Charge enable
-            self.charge_fet = True if (status_int & 0b0000000000000001) > 0 else False
-            # Discharge enable
-            self.discharge_fet = True if (status_int & 0b0000000000000100) > 0 else False
+        status_int = unpack_from(">H", status_data)[0]
 
-            logger.debug(">>> INFO: Battery Status: %s", bin(status_int))
+        # Charge enable
+        self.charge_fet = True if (status_int & 0b0000000000000001) > 0 else False
+        # Discharge enable
+        self.discharge_fet = True if (status_int & 0b0000000000000100) > 0 else False
 
-            fault_int = unpack_from(">H", status_data, 2 * 2)[0]
+        logger.debug(">>> INFO: Battery Status: %s", bin(status_int))
 
-            logger.debug(">>> INFO: Battery Fault: %s", bin(fault_int))
+        fault_int = unpack_from(">H", status_data, 2 * 2)[0]
 
-            self.protection = Protection()
-            #   ALARM = 2 , WARNING = 1 , OK = 0
+        logger.debug(">>> INFO: Battery Fault: %s", bin(fault_int))
 
-            # Cell voltage high status
-            self.protection.high_cell_voltage = 2 if (fault_int & 0b0000000000000100) > 0 else 0
-            # Cell voltage low status
-            self.protection.low_cell_voltage = 2 if (fault_int & 0b0000000000001000) > 0 else 0
-            # Charge current high status
-            self.protection.high_charge_current = 2 if (fault_int & 0b0000000000010000) > 0 else 0
-            # Discharge current high status
-            self.protection.high_discharge_current = 2 if (fault_int & 0b0000000000100000) > 0 else 0
-            # BMS Temperature high status
-            self.protection.high_internal_temperature = 2 if (fault_int & 0b0000000001000000) > 0 else 0
-            # Cell Temperature high status
-            self.protection.high_charge_temperature = 2 if (fault_int & 0b0000000100000000) > 0 else 0
-            # Cell Temperature low status
-            self.protection.low_charge_temperature = 2 if (fault_int & 0b0000001000000000) > 0 else 0
+        self.protection = Protection()
+        #   ALARM = 2 , WARNING = 1 , OK = 0
+
+        # Cell voltage high status
+        self.protection.high_cell_voltage = 2 if (fault_int & 0b0000000000000100) > 0 else 0
+        # Cell voltage low status
+        self.protection.low_cell_voltage = 2 if (fault_int & 0b0000000000001000) > 0 else 0
+        # Charge current high status
+        self.protection.high_charge_current = 2 if (fault_int & 0b0000000000010000) > 0 else 0
+        # Discharge current high status
+        self.protection.high_discharge_current = 2 if (fault_int & 0b0000000000100000) > 0 else 0
+        # BMS Temperature high status
+        self.protection.high_internal_temperature = 2 if (fault_int & 0b0000000001000000) > 0 else 0
+        # Cell Temperature high status
+        self.protection.high_charge_temperature = 2 if (fault_int & 0b0000000100000000) > 0 else 0
+        # Cell Temperature low status
+        self.protection.low_charge_temperature = 2 if (fault_int & 0b0000001000000000) > 0 else 0
 
         return True
 
     def read_cell_data(self):
         cell_volt_data = self.read_serial_data_felicity(self.command_cell_voltages)
         if cell_volt_data is False:
-            logger.warning("read_cell_data(): error serial read")
+            logger.error("read_cell_data(): error serial read")
             return False
 
         if len(cell_volt_data) != 32:
             logger.error(">>> INFO: Cell Data size are wrong: %s", len(cell_volt_data))
-        else:
-            for c in range(self.cell_count):
-                try:
-                    cell_volts = unpack_from(">H", cell_volt_data, c * 2)
-                    if len(cell_volts) != 0:
-                        v = cell_volts[0] / 1000
-                        self.cells[c].voltage = v
-                        self.cell_max_voltage = max(v, self.cell_max_voltage)
-                        self.cell_min_voltage = min(v, self.cell_min_voltage)
-                except struct.error:
-                    self.cells[c].voltage = 0
+            return False
+
+        cell_max_voltage = 0 
+        cell_min_voltage = 0xffff
+        for c in range(self.cell_count):
+            cell_volts = unpack_from(">H", cell_volt_data, c * 2)
+            v = cell_volts[0] / 1000
+            self.cells[c].voltage = v
+            cell_max_voltage = max(v, cell_max_voltage)
+            cell_min_voltage = min(v, cell_min_voltage)
+
+            if v > cell_max_voltage:
+                cell_max_voltage = v
+                self.cell_max_no = c
+            if v < cell_min_voltage:
+                cell_min_voltage = v
+                self.cell_min_no = c
+
+        self.cell_max_voltage = cell_max_voltage
+        self.cell_min_voltage = cell_min_voltage
         return True
 
     def read_temperature_data(self):
         tempBms_data = self.read_serial_data_felicity(self.command_bms_temperature_1)
         if tempBms_data is False:
-            logger.warning("read_temperature_data(): error serial read tempBms_data")
-            return False
-
-        if tempBms_data is False:
+            logger.error("read_temperature_data(): error serial read tempBms_data")
             return False
 
         if len(tempBms_data) != 2:
             logger.error(">>> INFO: BMS Temp Data size are wrong: %s", len(tempBms_data))
-        else:
-            self.temperature_mos = unpack(">h", tempBms_data)[0]
+            return False
+
+        self.temperature_mos = unpack(">h", tempBms_data)[0]
 
         temperature_1_3_data = self.read_serial_data_felicity(self.command_bms_temperature_1_3)
         if temperature_1_3_data is False:
-            logger.warning("read_temperature_data(): error serial read temperature_1_3_data")
-            return False
-
-        if temperature_1_3_data is False:
+            logger.error("read_temperature_data(): error serial read temperature_1_3_data")
             return False
 
         if len(temperature_1_3_data) != 10:
             logger.error(">>> INFO: Temp Data size are wrong: %s", len(temperature_1_3_data))
-        else:
-            self.temperatures[0] = unpack_from(">h", temperature_1_3_data, 1 * 2)[0]
-            self.temperatures[1] = unpack_from(">h", temperature_1_3_data, 2 * 2)[0]
-            self.temperatures[2] = unpack_from(">h", temperature_1_3_data, 3 * 2)[0]
+            return False
 
-            logger.debug(">>> INFO: Battery TempMos: %f C", self.temperature_mos)
-            logger.debug(">>> INFO: Battery Temperature_1: %f C", self.temperatures[0])
-            logger.debug(">>> INFO: Battery Temperature_2: %f C", self.temperatures[1])
-            logger.debug(">>> INFO: Battery Temperature_3: %f C", self.temperatures[2])
+        self.temperatures[0] = unpack_from(">h", temperature_1_3_data, 1 * 2)[0]
+        self.temperatures[1] = unpack_from(">h", temperature_1_3_data, 2 * 2)[0]
+        self.temperatures[2] = unpack_from(">h", temperature_1_3_data, 3 * 2)[0]
+
+        logger.debug(">>> INFO: Battery TempMos: %f C", self.temperature_mos)
+        logger.debug(">>> INFO: Battery Temperature_1: %f C", self.temperatures[0])
+        logger.debug(">>> INFO: Battery Temperature_2: %f C", self.temperatures[1])
+        logger.debug(">>> INFO: Battery Temperature_3: %f C", self.temperatures[2])
 
         return True
 
@@ -324,6 +330,7 @@ class Felicity(Battery):
         # logger.debug(">>> INFO: Query: %s",self.generate_command(command))
         # logger.debug(">>> INFO: Result All: %s", data)
         if data is False:
+            logger.error(f">>> ERROR: Felicity error reading serialport, ser: {self.ser}")
             return False
 
         start, flag, length = unpack_from("BBB", data)
@@ -339,8 +346,8 @@ class Felicity(Battery):
 
         if flag == 3:
             return data[3 : length + 3]
-        else:
-            logger.error(">>> ERROR: Felicity Incorrect Reply")
-            return False
+
+        logger.error(">>> ERROR: Felicity Incorrect Reply")
+        return False
 
 
